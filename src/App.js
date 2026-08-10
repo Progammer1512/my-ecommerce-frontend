@@ -162,7 +162,6 @@ function App() {
     }
   };
 
-  // SAFE STAGGERED INITIAL FETCH TO WAKE UP RENDER SERVER WITHOUT CRASHING
   useEffect(() => {
     fetchProducts();
     const timer = setTimeout(() => {
@@ -222,21 +221,6 @@ function App() {
     } catch (err) { 
       alert(err.response?.data?.message || 'Signup failed. Please check backend connection.'); 
     }
-  };
-
-  const handleVerifyOtpSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post(`${BASE_URL}/api/auth/verify-otp`, { email: pendingEmail, otp: otpCode });
-      alert(res.data.message || 'Account verified successfully!');
-      setUser(res.data.user);
-      setShippingName(res.data.user.name || '');
-      setShippingAddress(res.data.user.address || '');
-      setShippingPhone(res.data.user.mobile || '');
-      localStorage.setItem('googleUser', JSON.stringify(res.data.user));
-      setShowOtpModal(false);
-      setOtpCode('');
-    } catch (err) { alert(err.response?.data?.message || 'Invalid or expired OTP'); }
   };
 
   const handleEmailLoginSubmit = async (e) => {
@@ -353,7 +337,6 @@ function App() {
 
   const handleApplyCouponCode = (codeToApply) => {
     const cleanCode = (codeToApply || couponCode).trim().toUpperCase();
-
     if (!cleanCode) return;
 
     const foundCoupon = coupons.find(c => (c.code || '').toUpperCase().trim() === cleanCode);
@@ -538,7 +521,8 @@ function App() {
         price: item.price,
         image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
         description: 'Verified store product from customer order history.',
-        category: 'Ordered Item'
+        category: 'Ordered Item',
+        stock: item.stock !== undefined ? item.stock : 10
       });
     }
   };
@@ -707,8 +691,11 @@ function App() {
                 <div className="row g-2 mb-4 p-3 bg-light rounded border">
                   <div className="col-6">
                     <span className="small text-muted d-block fw-bold">Availability:</span>
-                    {(selectedProductDetail.stock || 10) > 0 ? (
-                      <span className="text-success fw-bold fs-6"><i className="bi bi-check-circle-fill me-1"></i>In Stock ({selectedProductDetail.stock || 10} Left)</span>
+                    {/* 🔧 FIXED: Using exact database stock without forced 10 fallback */}
+                    {(selectedProductDetail.stock !== undefined ? Number(selectedProductDetail.stock) : 10) > 0 ? (
+                      <span className="text-success fw-bold fs-6">
+                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({selectedProductDetail.stock !== undefined ? selectedProductDetail.stock : 10} Left)
+                      </span>
                     ) : (
                       <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock</span>
                     )}
