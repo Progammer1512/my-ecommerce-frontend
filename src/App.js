@@ -7,6 +7,13 @@ import { jwtDecode } from 'jwt-decode';
 // LIVE BACKEND BASE URL
 const BASE_URL = 'https://my-ecommerce-project-nmfj.onrender.com';
 
+// Helper to filter out corrupted local/broken image paths
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  if (url.includes('NOW_REPLACE_TEXT') || url.includes('localhost:5000')) return false;
+  return true;
+};
+
 function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -132,7 +139,10 @@ function App() {
     try {
       const res = await axios.get(`${BASE_URL}/api/banners`);
       if (res.data && res.data.length > 0) {
-        setHeroBanners(res.data);
+        const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
+        if (cleanBanners.length > 0) {
+          setHeroBanners(cleanBanners);
+        }
       }
     } catch (err) {
       console.error('Error fetching banners:', err);
@@ -395,7 +405,6 @@ function App() {
 
   const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
-  // 🚀 FIXED: RESILIENT ORDER PLACEMENT FOR MONGODB DATABASES
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return alert('Cart is empty!');
