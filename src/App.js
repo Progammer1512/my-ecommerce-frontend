@@ -97,7 +97,7 @@ function App() {
 
   const fetchCoupons = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/coupons`);
+      const res = await axios.get(`${BASE_URL}/api/coupons`, { timeout: 10000 });
       if (Array.isArray(res.data) && res.data.length > 0) {
         setCoupons(res.data);
       }
@@ -111,7 +111,7 @@ function App() {
 
   const fetchReviews = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/reviews`);
+      const res = await axios.get(`${BASE_URL}/api/reviews`, { timeout: 10000 });
       if (Array.isArray(res.data)) {
         setAllReviews(res.data);
       }
@@ -122,7 +122,7 @@ function App() {
 
   const fetchLiveOrders = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/orders`);
+      const res = await axios.get(`${BASE_URL}/api/orders`, { timeout: 10000 });
       if (Array.isArray(res.data)) {
         setAllStoreOrders(res.data);
       }
@@ -137,7 +137,7 @@ function App() {
 
   const fetchBanners = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/banners`);
+      const res = await axios.get(`${BASE_URL}/api/banners`, { timeout: 10000 });
       if (res.data && res.data.length > 0) {
         const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
         if (cleanBanners.length > 0) {
@@ -149,16 +149,35 @@ function App() {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${BASE_URL}/api/products`, { timeout: 12000 });
+      const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
+      setProducts(productList);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setLoading(false);
+    }
+  };
+
+  // SAFE STAGGERED INITIAL FETCH TO WAKE UP RENDER SERVER WITHOUT CRASHING
   useEffect(() => {
-    fetchBanners();
-    fetchLiveOrders();
-    fetchReviews();
-    fetchCoupons();
+    fetchProducts();
+    const timer = setTimeout(() => {
+      fetchBanners();
+      fetchLiveOrders();
+      fetchReviews();
+      fetchCoupons();
+    }, 1500);
 
     const savedRev = localStorage.getItem('submittedReviews');
     if (savedRev) {
       setSubmittedReviews(JSON.parse(savedRev));
     }
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -166,7 +185,7 @@ function App() {
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
-    }, 3000);
+    }, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -186,23 +205,6 @@ function App() {
       setUser(parsed);
       setShippingName(parsed.name || '');
     }
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${BASE_URL}/api/products`);
-      const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
-      setProducts(productList);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
   }, []);
 
   const handleEmailSignupSubmit = async (e) => {
