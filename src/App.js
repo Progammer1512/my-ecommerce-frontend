@@ -418,7 +418,7 @@ function App() {
         qty: Number(i.qty) || 1, 
         price: Number(i.price) || 0, 
         product: i._id || i.id,
-        image: i.image || 'https://via.placeholder.com/150'
+        image: i.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'
       })),
       shippingAddress: { 
         name: shippingName || (user ? user.name : 'Verified Customer'), 
@@ -536,7 +536,7 @@ function App() {
         _id: item.product || item._id,
         name: item.name,
         price: item.price,
-        image: item.image || 'https://via.placeholder.com/300',
+        image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item'
       });
@@ -608,7 +608,7 @@ function App() {
 
             {user ? (
               <div className="d-flex align-items-center gap-1 text-white">
-                <img src={user.picture || 'https://via.placeholder.com/40'} alt="Profile" className="rounded-circle border" width="30" height="30" />
+                <img src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt="Profile" className="rounded-circle border" width="30" height="30" />
                 <span className="fw-bold small text-truncate d-none d-md-inline" style={{ maxWidth: '100px' }}>{user.name}</span>
                 <button className="btn btn-sm btn-outline-danger ms-1 py-0 px-2" onClick={handleGoogleLogout}>Logout</button>
               </div>
@@ -672,7 +672,7 @@ function App() {
                     10% OFF
                   </span>
                   <img 
-                    src={selectedProductDetail.image || 'https://via.placeholder.com/400'} 
+                    src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
                     alt={selectedProductDetail.name} 
                     className="img-fluid rounded" 
                     style={{ maxHeight: '380px', objectFit: 'contain' }}
@@ -816,7 +816,7 @@ function App() {
                       onClick={() => handleOpenProductDetail(p)}
                     >
                       <img 
-                        src={p.image || 'https://via.placeholder.com/300x200'} 
+                        src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
                         className="img-fluid h-100" 
                         alt={p.name} 
                         style={{ objectFit: 'contain' }}
@@ -925,7 +925,7 @@ function App() {
                           onClick={() => handleOpenProductDetail(p)}
                         >
                           <img 
-                            src={p.image || 'https://via.placeholder.com/300x200'} 
+                            src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
                             className="img-fluid h-100" 
                             alt={p.name} 
                             style={{ objectFit: 'contain' }}
@@ -1255,7 +1255,7 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className="d-flex align-items-center gap-2 p-2 rounded border bg-light shadow-sm" style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  <img src={item.image || 'https://via.placeholder.com/80'} alt={item.name} className="rounded border bg-white" width="45" height="45" style={{ objectFit: 'cover' }} />
+                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded border bg-white" width="45" height="45" style={{ objectFit: 'cover' }} />
                                   <div>
                                     <div className="fw-bold small text-dark text-truncate" style={{ maxWidth: '160px' }}>{item.name}</div>
                                     <span className="badge bg-secondary" style={{ fontSize: '10px' }}>Qty: {item.qty || 1}</span>
