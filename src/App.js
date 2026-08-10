@@ -565,33 +565,27 @@ function App() {
 
   return (
     <div className="bg-light min-vh-100 position-relative">
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
-        <div className="container">
+      
+      {/* MOBILE RESPONSIVE WRAPPED NAVBAR */}
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
+        <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
+          
           <a 
-            className="navbar-brand fw-bold text-warning fs-3" 
+            className="navbar-brand fw-bold text-warning fs-3 m-0" 
             href="#home"
             onClick={() => setSelectedProductDetail(null)}
           >
             <i className="bi bi-shop me-2"></i>TechStore
           </a>
 
-          <div className="d-flex mx-auto col-md-4 my-2 my-lg-0">
-            <input 
-              type="text" 
-              className="form-control rounded-pill px-3" 
-              placeholder="Search products..." 
-              value={searchTerm} 
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); }} 
-            />
-          </div>
-
-          <div className="d-flex align-items-center gap-3">
+          {/* Quick Responsive Action Row */}
+          <div className="d-flex align-items-center gap-2 ms-auto">
             <button 
-              className="btn btn-outline-light btn-sm rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center gap-2" 
+              className="btn btn-outline-light btn-sm rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1" 
               onClick={() => { fetchLiveOrders(); setShowOrderTracking(true); }}
             >
               <i className="bi bi-bag-check fs-6"></i>
-              <span>My Orders</span>
+              <span className="d-none d-sm-inline">My Orders</span>
               {userOrders.length > 0 && (
                 <span className="badge rounded-pill bg-primary ms-1">
                   {userOrders.length}
@@ -600,26 +594,28 @@ function App() {
             </button>
 
             {user ? (
-              <div className="d-flex align-items-center gap-2 text-white">
-                <img src={user.picture || 'https://via.placeholder.com/40'} alt="Profile" className="rounded-circle border" width="34" height="34" />
-                <span className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{user.name}</span>
-                <button className="btn btn-sm btn-outline-danger ms-1" onClick={handleGoogleLogout}>Logout</button>
+              <div className="d-flex align-items-center gap-1 text-white">
+                <img src={user.picture || 'https://via.placeholder.com/40'} alt="Profile" className="rounded-circle border" width="30" height="30" />
+                <span className="fw-bold small text-truncate d-none d-md-inline" style={{ maxWidth: '100px' }}>{user.name}</span>
+                <button className="btn btn-sm btn-outline-danger ms-1 py-0 px-2" onClick={handleGoogleLogout}>Logout</button>
               </div>
             ) : (
-              <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleFailure}
-                  shape="pill"
-                  size="medium"
-                />
+              <div className="d-flex align-items-center gap-1">
+                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowSignupModal(true)}>Sign Up</button>
+                <div className="d-none d-md-inline-block">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleFailure}
+                    shape="pill"
+                    size="small"
+                  />
+                </div>
               </div>
             )}
 
             <button 
-              className="btn btn-warning fw-bold rounded-pill px-3 py-2 position-relative"
+              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative"
               onClick={() => setShowCartModal(true)}
             >
               <i className="bi bi-cart3 me-1"></i> Cart
@@ -630,9 +626,22 @@ function App() {
               )}
             </button>
           </div>
+
+          {/* Search Bar Mobile Full Width */}
+          <div className="w-100 order-3 order-md-2 col-md-4 my-1 my-lg-0 mx-auto">
+            <input 
+              type="text" 
+              className="form-control rounded-pill px-3 form-control-sm" 
+              placeholder="Search products..." 
+              value={searchTerm} 
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); }} 
+            />
+          </div>
+
         </div>
       </nav>
 
+      {/* PRODUCT DETAIL OR MAIN CATALOG */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -963,6 +972,7 @@ function App() {
         </>
       )}
 
+      {/* Floating Chatbot Assistant */}
       <div className="position-fixed bottom-0 end-0 m-4 z-3">
         {showChatbot ? (
           <div className="card shadow-lg border-0" style={{ width: '320px', height: '400px' }}>
@@ -984,6 +994,7 @@ function App() {
         )}
       </div>
 
+      {/* 1. CART MODAL */}
       {showCartModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1012,7 +1023,6 @@ function App() {
                           <tr key={item._id}>
                             <td className="fw-bold">{item.name}</td>
                             <td>₹{item.price}</td>
-                            
                             <td className="text-center">
                               <div className="d-inline-flex align-items-center border rounded bg-light px-1">
                                 <button 
@@ -1032,7 +1042,6 @@ function App() {
                                 </button>
                               </div>
                             </td>
-
                             <td className="fw-bold text-success">₹{item.price * item.qty}</td>
                             <td>
                               <button className="btn btn-outline-danger btn-sm" onClick={() => removeFromCart(item._id)}>Remove</button>
@@ -1108,6 +1117,7 @@ function App() {
         </div>
       )}
 
+      {/* 2. CHECKOUT MODAL */}
       {showCheckoutModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1158,6 +1168,7 @@ function App() {
         </div>
       )}
 
+      {/* 3. MY ORDERS TRACKING MODAL */}
       {showOrderTracking && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1268,6 +1279,7 @@ function App() {
         </div>
       )}
 
+      {/* 4. REVIEW MODAL */}
       {showReviewModal && selectedOrderForReview && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1301,6 +1313,7 @@ function App() {
         </div>
       )}
 
+      {/* 5. RETURN MODAL */}
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1341,6 +1354,7 @@ function App() {
         </div>
       )}
 
+      {/* 6. SIGNUP MODAL */}
       {showSignupModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1363,6 +1377,7 @@ function App() {
         </div>
       )}
 
+      {/* 7. LOGIN MODAL */}
       {showLoginModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
