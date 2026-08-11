@@ -14,6 +14,14 @@ const isValidImageUrl = (url) => {
   return true;
 };
 
+// 🟢 HELPER: READS EXACT STOCK FROM MONGODB (Supports countInStock or stock)
+const getProductStock = (p) => {
+  if (!p) return 0;
+  if (p.countInStock !== undefined && p.countInStock !== null) return Number(p.countInStock);
+  if (p.stock !== undefined && p.stock !== null) return Number(p.stock);
+  return 0;
+};
+
 function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -181,10 +189,11 @@ function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      fetchProducts();
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
-    }, 6000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -292,8 +301,9 @@ function App() {
     window.scrollTo({ top: 350, behavior: 'smooth' });
   };
 
+  // 🟢 FIXED ADD TO CART: Uses getProductStock helper
   const addToCart = (product) => {
-    const prodStock = product.stock !== undefined && product.stock !== null ? Number(product.stock) : 0;
+    const prodStock = getProductStock(product);
     if (prodStock <= 0) {
       alert("❌ Sorry, this item is Out of Stock!");
       return;
@@ -434,6 +444,7 @@ function App() {
       }
 
       fetchLiveOrders();
+      fetchProducts();
       setCart([]);
       setAppliedCoupon(null);
       setCouponCode('');
@@ -527,7 +538,7 @@ function App() {
         image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
-        stock: item.stock !== undefined && item.stock !== null ? Number(item.stock) : 0
+        countInStock: item.countInStock !== undefined ? item.countInStock : (item.stock || 0)
       });
     }
   };
@@ -568,7 +579,7 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative">
       
-      {/* MOBILE RESPONSIVE WRAPPED NAVBAR */}
+      {/* NAVBAR */}
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
           
@@ -580,7 +591,6 @@ function App() {
             <i className="bi bi-shop me-2"></i>TechStore
           </a>
 
-          {/* Quick Responsive Action Row */}
           <div className="d-flex align-items-center gap-2 ms-auto">
             <button 
               className="btn btn-outline-light btn-sm rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1" 
@@ -629,7 +639,6 @@ function App() {
             </button>
           </div>
 
-          {/* Search Bar Mobile Full Width */}
           <div className="w-100 order-3 order-md-2 col-md-4 my-1 my-lg-0 mx-auto">
             <input 
               type="text" 
@@ -696,9 +705,10 @@ function App() {
                 <div className="row g-2 mb-4 p-3 bg-light rounded border">
                   <div className="col-6">
                     <span className="small text-muted d-block fw-bold">Availability:</span>
-                    {(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) > 0 ? (
+                    {/* 🟢 FIXED: Reads exact stock using getProductStock */}
+                    {getProductStock(selectedProductDetail) > 0 ? (
                       <span className="text-success fw-bold fs-6">
-                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({selectedProductDetail.stock} Left)
+                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail)} Left)
                       </span>
                     ) : (
                       <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock (0 Left)</span>
@@ -718,20 +728,21 @@ function App() {
                 </div>
 
                 <div className="mt-auto d-flex gap-3">
+                  {/* 🟢 FIXED BUY BUTTON: Checks getProductStock */}
                   <button 
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
-                      (selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0 
+                      getProductStock(selectedProductDetail) <= 0 
                       ? 'btn-secondary disabled' 
                       : 'btn-warning'
                     }`}
-                    disabled={(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0}
+                    disabled={getProductStock(selectedProductDetail) <= 0}
                     onClick={() => {
                       addToCart(selectedProductDetail);
                       setShowCartModal(true);
                     }}
                   >
                     <i className="bi bi-cart-plus-fill me-2"></i>
-                    {(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0 
+                    {getProductStock(selectedProductDetail) <= 0 
                       ? 'Out of Stock' 
                       : 'Add to Cart & Buy Now'
                     }
@@ -741,6 +752,7 @@ function App() {
             </div>
           </div>
 
+          {/* REVIEWS SECTION */}
           <div className="card border-0 shadow-sm p-4 bg-white rounded-4 mb-5">
             <h4 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
               <i className="bi bi-chat-left-quote-fill text-warning"></i> Customer Ratings & Verified Reviews
@@ -917,7 +929,9 @@ function App() {
               <>
                 <div className="row g-4">
                   {currentProducts.map((p) => {
-                    const currentStock = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                    // 🟢 READS EXACT STOCK USING HELPER FUNCTION
+                    const currentStock = getProductStock(p);
+                    
                     return (
                     <div key={p._id} className="col-lg-4 col-md-6">
                       <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden">
@@ -937,7 +951,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center mb-2">
                             <span className="badge bg-secondary">{p.category || 'General'}</span>
                             
-                            {/* MONGO DB LIVE STOCK DISPLAY */}
+                            {/* 🟢 MONGO DB LIVE STOCK DISPLAY ACCORDING TO countInStock */}
                             {currentStock <= 0 ? (
                               <span className="badge bg-danger">Out of Stock (0 Left)</span>
                             ) : currentStock < 5 ? (
@@ -963,6 +977,7 @@ function App() {
                               <button className="btn btn-outline-primary btn-sm fw-bold" onClick={() => handleOpenProductDetail(p)}>
                                 View Details
                               </button>
+                              {/* 🟢 ADD TO CART BUTTON DEPENDS ON REAL STOCK */}
                               <button 
                                 className={`btn fw-bold rounded-2 px-3 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
                                 disabled={currentStock <= 0}
@@ -1025,7 +1040,7 @@ function App() {
         )}
       </div>
 
-      {/* 1. CART MODAL */}
+      {/* CART MODAL */}
       {showCartModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1148,7 +1163,7 @@ function App() {
         </div>
       )}
 
-      {/* 2. CHECKOUT MODAL */}
+      {/* CHECKOUT MODAL */}
       {showCheckoutModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1199,7 +1214,7 @@ function App() {
         </div>
       )}
 
-      {/* 3. MY ORDERS TRACKING MODAL */}
+      {/* MY ORDERS TRACKING MODAL */}
       {showOrderTracking && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1310,7 +1325,7 @@ function App() {
         </div>
       )}
 
-      {/* 4. REVIEW MODAL */}
+      {/* REVIEW MODAL */}
       {showReviewModal && selectedOrderForReview && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1344,7 +1359,7 @@ function App() {
         </div>
       )}
 
-      {/* 5. RETURN MODAL */}
+      {/* RETURN MODAL */}
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1385,7 +1400,7 @@ function App() {
         </div>
       )}
 
-      {/* 6. SIGNUP MODAL */}
+      {/* SIGNUP MODAL */}
       {showSignupModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
@@ -1408,7 +1423,7 @@ function App() {
         </div>
       )}
 
-      {/* 7. LOGIN MODAL */}
+      {/* LOGIN MODAL */}
       {showLoginModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
