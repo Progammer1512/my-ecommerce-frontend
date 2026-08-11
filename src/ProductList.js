@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+// LIVE BACKEND BASE URL (NO TRAILING SLASH)
+const BASE_URL = 'https://my-ecommerce-project-nmfj.onrender.com';
+
 function ProductList() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +18,9 @@ function ProductList() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/products');
+      // 🔧 FIXED: Changed local 5000 URL to Live Render Backend Base URL
+      const res = await axios.get(`${BASE_URL}/api/products`);
+      
       // Normalize response array
       const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
       setProducts(productList);
@@ -73,8 +78,10 @@ function ProductList() {
       ) : (
         <>
           <div className="row g-4">
-            {currentProducts.map((p) => (
-              <div key={p._id} className="col-md-4 col-sm-6">
+            {currentProducts.map((p) => {
+              const currentStock = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+              return (
+              <div key={p._id || p.id} className="col-md-4 col-sm-6">
                 <div className="card h-100 border-0 shadow-sm">
                   <img 
                     src={p.image || 'https://via.placeholder.com/300x200'} 
@@ -83,21 +90,36 @@ function ProductList() {
                     style={{ height: '220px', objectFit: 'contain' }}
                   />
                   <div className="card-body d-flex flex-column">
-                    <span className="badge bg-secondary mb-2 w-auto me-auto">{p.category || 'General'}</span>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="badge bg-secondary">{p.category || 'General'}</span>
+                      
+                      {/* 🟢 DYNAMIC MONGO DB LIVE STOCK BADGE */}
+                      {currentStock <= 0 ? (
+                        <span className="badge bg-danger">Out of Stock (0 Left)</span>
+                      ) : currentStock < 5 ? (
+                        <span className="badge bg-warning text-dark">Low Stock ({currentStock} Left)</span>
+                      ) : (
+                        <span className="badge bg-success">In Stock ({currentStock} Left)</span>
+                      )}
+                    </div>
+
                     <h5 className="card-title fw-bold">{p.name}</h5>
                     <p className="card-text text-muted small flex-grow-1">
                       {p.description ? p.description.substring(0, 80) + '...' : 'No description'}
                     </p>
                     <div className="d-flex align-items-center justify-content-between mt-3">
                       <span className="fs-4 fw-bold text-success">₹{p.price}</span>
-                      <button className="btn btn-primary fw-bold">
-                        <i className="bi bi-cart-plus me-1"></i> Add to Cart
+                      <button 
+                        className={`btn fw-bold ${currentStock <= 0 ? 'btn-secondary' : 'btn-primary'}`}
+                        disabled={currentStock <= 0}
+                      >
+                        <i className="bi bi-cart-plus me-1"></i> {currentStock <= 0 ? 'Out of Stock' : 'Add to Cart'}
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
           {/* Pagination Controls */}
