@@ -14,7 +14,7 @@ const isValidImageUrl = (url) => {
   return true;
 };
 
-// 🟢 HELPER: READS EXACT STOCK FROM MONGODB (Supports countInStock or stock)
+// HELPER: READS EXACT STOCK FROM MONGODB (Supports countInStock or stock)
 const getProductStock = (p) => {
   if (!p) return 0;
   if (p.countInStock !== undefined && p.countInStock !== null) return Number(p.countInStock);
@@ -157,21 +157,22 @@ function App() {
     }
   };
 
-  const fetchProducts = async () => {
+  // 🟢 FIX: setInitial = true only shows loading spinner on first mount, not during polling
+  const fetchProducts = async (setInitial = false) => {
     try {
-      setLoading(true);
+      if (setInitial) setLoading(true);
       const res = await axios.get(`${BASE_URL}/api/products`, { timeout: 12000 });
       const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
       setProducts(productList);
-      setLoading(false);
     } catch (err) {
       console.error('Error fetching products:', err);
-      setLoading(false);
+    } finally {
+      if (setInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(true);
     const timer = setTimeout(() => {
       fetchBanners();
       fetchLiveOrders();
@@ -187,13 +188,14 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // 🟢 FIX: Quiet background polling prevents layout re-renders
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchProducts();
+      fetchProducts(false);
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -301,7 +303,6 @@ function App() {
     window.scrollTo({ top: 350, behavior: 'smooth' });
   };
 
-  // 🟢 FIXED ADD TO CART: Uses getProductStock helper
   const addToCart = (product) => {
     const prodStock = getProductStock(product);
     if (prodStock <= 0) {
@@ -444,7 +445,7 @@ function App() {
       }
 
       fetchLiveOrders();
-      fetchProducts();
+      fetchProducts(false);
       setCart([]);
       setAppliedCoupon(null);
       setCouponCode('');
@@ -612,10 +613,12 @@ function App() {
                 <button className="btn btn-sm btn-outline-danger ms-1 py-0 px-2" onClick={handleGoogleLogout}>Logout</button>
               </div>
             ) : (
-              <div className="d-flex align-items-center gap-1">
+              <div className="d-flex align-items-center gap-1 flex-wrap">
                 <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
                 <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                <div className="d-none d-md-inline-block">
+                
+                {/* 🟢 FIX: Visible on both mobile & desktop */}
+                <div className="d-inline-block">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleFailure}
@@ -705,7 +708,6 @@ function App() {
                 <div className="row g-2 mb-4 p-3 bg-light rounded border">
                   <div className="col-6">
                     <span className="small text-muted d-block fw-bold">Availability:</span>
-                    {/* 🟢 FIXED: Reads exact stock using getProductStock */}
                     {getProductStock(selectedProductDetail) > 0 ? (
                       <span className="text-success fw-bold fs-6">
                         <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail)} Left)
@@ -728,7 +730,6 @@ function App() {
                 </div>
 
                 <div className="mt-auto d-flex gap-3">
-                  {/* 🟢 FIXED BUY BUTTON: Checks getProductStock */}
                   <button 
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
                       getProductStock(selectedProductDetail) <= 0 
@@ -929,7 +930,6 @@ function App() {
               <>
                 <div className="row g-4">
                   {currentProducts.map((p) => {
-                    // 🟢 READS EXACT STOCK USING HELPER FUNCTION
                     const currentStock = getProductStock(p);
                     
                     return (
@@ -951,7 +951,6 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center mb-2">
                             <span className="badge bg-secondary">{p.category || 'General'}</span>
                             
-                            {/* 🟢 MONGO DB LIVE STOCK DISPLAY ACCORDING TO countInStock */}
                             {currentStock <= 0 ? (
                               <span className="badge bg-danger">Out of Stock (0 Left)</span>
                             ) : currentStock < 5 ? (
@@ -977,7 +976,6 @@ function App() {
                               <button className="btn btn-outline-primary btn-sm fw-bold" onClick={() => handleOpenProductDetail(p)}>
                                 View Details
                               </button>
-                              {/* 🟢 ADD TO CART BUTTON DEPENDS ON REAL STOCK */}
                               <button 
                                 className={`btn fw-bold rounded-2 px-3 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
                                 disabled={currentStock <= 0}
