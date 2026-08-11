@@ -37,11 +37,8 @@ function App() {
   // EMAIL SIGN-UP & LOGIN MODAL STATES
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [otpCode, setOtpCode] = useState('');
-  const [pendingEmail, setPendingEmail] = useState('');
 
   // FULL-PAGE PRODUCT DETAIL STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
@@ -157,7 +154,6 @@ function App() {
     }
   };
 
-  // 🟢 FIX: setInitial = true only shows loading spinner on first mount, not during polling
   const fetchProducts = async (setInitial = false) => {
     try {
       if (setInitial) setLoading(true);
@@ -188,7 +184,6 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 🟢 FIX: Background polling prevents layout re-renders
   useEffect(() => {
     const interval = setInterval(() => {
       fetchProducts(false);
@@ -580,62 +575,22 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative">
       
-      {/* NAVBAR */}
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
-        <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
+      {/* 🟢 BOOTSTRAP RESPONSIVE NAVBAR (Clean Grid for Mobile, Tablet & Desktop) */}
+      <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-3">
+        <div className="container-fluid p-0">
           
-          <a 
-            className="navbar-brand fw-bold text-warning fs-3 m-0" 
-            href="#home"
-            onClick={() => setSelectedProductDetail(null)}
-          >
-            <i className="bi bi-shop me-2"></i>TechStore
-          </a>
-
-          <div className="d-flex align-items-center gap-2 ms-auto">
-            <button 
-              className="btn btn-outline-light btn-sm rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1" 
-              onClick={() => { fetchLiveOrders(); setShowOrderTracking(true); }}
+          {/* Top Row: Brand Logo & Cart Button */}
+          <div className="d-flex justify-content-between align-items-center w-100 mb-2">
+            <a 
+              className="navbar-brand fw-bold text-warning fs-3 m-0" 
+              href="#home"
+              onClick={() => setSelectedProductDetail(null)}
             >
-              <i className="bi bi-bag-check fs-6"></i>
-              <span className="d-none d-sm-inline">My Orders</span>
-              {userOrders.length > 0 && (
-                <span className="badge rounded-pill bg-primary ms-1">
-                  {userOrders.length}
-                </span>
-              )}
-            </button>
-
-            {user ? (
-              <div className="d-flex align-items-center gap-1 text-white">
-                <img src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt="Profile" className="rounded-circle border" width="30" height="30" />
-                <span className="fw-bold small text-truncate d-none d-md-inline" style={{ maxWidth: '100px' }}>{user.name}</span>
-                <button className="btn btn-sm btn-outline-danger ms-1 py-0 px-2" onClick={handleGoogleLogout}>Logout</button>
-              </div>
-            ) : (
-              <div className="d-flex align-items-center gap-1 flex-wrap">
-                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                
-                {/* 🟢 COMPACT FANCY GOOGLE LOGIN BUTTON FOR MOBILE & DESKTOP */}
-                <div 
-                  className="d-inline-flex align-items-center shadow-sm rounded-pill border bg-white px-1 py-0 overflow-hidden" 
-                  style={{ transform: 'scale(0.82)', transformOrigin: 'center left', margin: '-4px 0' }}
-                >
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleFailure}
-                    shape="pill"
-                    size="medium"
-                    theme="filled_blue"
-                    text="signin_with"
-                  />
-                </div>
-              </div>
-            )}
+              <i className="bi bi-shop me-2"></i>TechStore
+            </a>
 
             <button 
-              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative"
+              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
               onClick={() => setShowCartModal(true)}
             >
               <i className="bi bi-cart3 me-1"></i> Cart
@@ -647,10 +602,53 @@ function App() {
             </button>
           </div>
 
-          <div className="w-100 order-3 order-md-2 col-md-4 my-1 my-lg-0 mx-auto">
+          {/* Middle Row: User Controls & Authentication Actions */}
+          <div className="d-flex flex-wrap justify-content-between align-items-center w-100 gap-2 mb-2">
+            
+            <button 
+              className="btn btn-outline-light btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" 
+              onClick={() => { fetchLiveOrders(); setShowOrderTracking(true); }}
+            >
+              <i className="bi bi-bag-check fs-6"></i>
+              <span>My Orders</span>
+              {userOrders.length > 0 && (
+                <span className="badge rounded-pill bg-primary ms-1">
+                  {userOrders.length}
+                </span>
+              )}
+            </button>
+
+            {user ? (
+              <div className="d-flex align-items-center gap-2 text-white bg-secondary bg-opacity-25 px-2 py-1 rounded-pill">
+                <img src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt="Profile" className="rounded-circle border" width="28" height="28" />
+                <span className="fw-bold small text-truncate" style={{ maxWidth: '90px' }}>{user.name}</span>
+                <button className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill fw-bold" onClick={handleGoogleLogout}>Logout</button>
+              </div>
+            ) : (
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
+                
+                {/* 🟢 BOOTSTRAP GOOGLE ICON BUTTON FOR PERFECT MOBILE FIT */}
+                <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleFailure}
+                    type="icon"
+                    shape="circle"
+                    size="medium"
+                  />
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Bottom Row: Full-width Search Input */}
+          <div className="w-100 mt-1">
             <input 
               type="text" 
-              className="form-control rounded-pill px-3 form-control-sm" 
+              className="form-control form-control-sm rounded-pill px-3 shadow-sm" 
               placeholder="Search products..." 
               value={searchTerm} 
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); }} 
