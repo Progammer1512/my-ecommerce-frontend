@@ -34,6 +34,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
+  // CATEGORY MENU MODAL STATE
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+
   // EMAIL SIGN-UP & LOGIN MODAL STATES
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -399,7 +402,7 @@ function App() {
     handleApplyCouponCode(couponCode);
   };
 
-  const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
+  const categoriesList = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -575,19 +578,33 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative">
       
-      {/* 🟢 BOOTSTRAP RESPONSIVE NAVBAR (Clean Grid for Mobile, Tablet & Desktop) */}
+      {/* 🟢 BOOTSTRAP RESPONSIVE NAVBAR WITH HAMBURGER CATEGORY MENU */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-3">
         <div className="container-fluid p-0">
           
-          {/* Top Row: Brand Logo & Cart Button */}
+          {/* Top Row: Brand Logo, Hamburger Menu & Cart Button */}
           <div className="d-flex justify-content-between align-items-center w-100 mb-2">
-            <a 
-              className="navbar-brand fw-bold text-warning fs-3 m-0" 
-              href="#home"
-              onClick={() => setSelectedProductDetail(null)}
-            >
-              <i className="bi bi-shop me-2"></i>TechStore
-            </a>
+            
+            {/* Logo & Category Hamburger Button */}
+            <div className="d-flex align-items-center gap-2">
+              <button 
+                className="btn btn-warning btn-sm fw-bold px-2 py-1 shadow-sm d-flex align-items-center justify-content-center"
+                onClick={() => setShowCategoryMenu(true)}
+                title="Browse Categories"
+                style={{ borderRadius: '6px' }}
+              >
+                <i className="bi bi-list fs-5 me-1"></i>
+                <span className="small fw-bold">Menu</span>
+              </button>
+
+              <a 
+                className="navbar-brand fw-bold text-warning fs-3 m-0" 
+                href="#home"
+                onClick={() => setSelectedProductDetail(null)}
+              >
+                <i className="bi bi-shop me-1"></i>TechStore
+              </a>
+            </div>
 
             <button 
               className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
@@ -629,7 +646,7 @@ function App() {
                 <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
                 <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
                 
-                {/* 🟢 BOOTSTRAP GOOGLE ICON BUTTON FOR PERFECT MOBILE FIT */}
+                {/* 🟢 BOOTSTRAP GOOGLE ICON BUTTON FOR MOBILE */}
                 <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
@@ -644,7 +661,7 @@ function App() {
 
           </div>
 
-          {/* Bottom Row: Full-width Search Input */}
+          {/* Bottom Row: Search Bar */}
           <div className="w-100 mt-1">
             <input 
               type="text" 
@@ -657,6 +674,45 @@ function App() {
 
         </div>
       </nav>
+
+      {/* 🍔 CATEGORY HAMBURGER MENU MODAL */}
+      {showCategoryMenu && (
+        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered modal-sm">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header bg-dark text-white">
+                <h5 className="modal-title fw-bold text-warning mb-0">
+                  <i className="bi bi-grid-3x3-gap-fill me-2"></i>Select Category
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowCategoryMenu(false)}></button>
+              </div>
+              <div className="modal-body p-3 bg-light">
+                <div className="d-flex flex-column gap-2">
+                  {categoriesList.map((cat, idx) => (
+                    <button
+                      key={idx}
+                      className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between ${
+                        selectedCategory === cat 
+                          ? 'btn-warning text-dark shadow-sm' 
+                          : 'btn-white bg-white text-dark border'
+                      }`}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setCurrentPage(1);
+                        setSelectedProductDetail(null);
+                        setShowCategoryMenu(false);
+                      }}
+                    >
+                      <span>📦 {cat}</span>
+                      {selectedCategory === cat && <i className="bi bi-check-circle-fill text-dark"></i>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PRODUCT DETAIL OR MAIN CATALOG */}
       {selectedProductDetail ? (
@@ -903,22 +959,18 @@ function App() {
           )}
 
           <div className="container py-3">
-            <div className="d-flex gap-2 overflow-auto mb-4 pb-2">
-              {categories.map((cat, idx) => (
-                <button
-                  key={idx}
-                  className={`btn btn-sm rounded-pill px-4 fw-bold text-nowrap ${selectedCategory === cat ? 'btn-primary' : 'btn-outline-secondary bg-white'}`}
-                  onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                >
-                  {cat}
+            <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+              <h3 className="fw-bold m-0">
+                {selectedCategory === 'All' ? 'Explore Our Store Products' : `${selectedCategory} Collection`}
+                <span className="fs-6 text-muted ms-2">({filteredProducts.length} items available)</span>
+              </h3>
+              
+              {selectedCategory !== 'All' && (
+                <button className="btn btn-outline-secondary btn-sm fw-bold rounded-pill" onClick={() => setSelectedCategory('All')}>
+                  Showing: {selectedCategory} ✕ (Show All)
                 </button>
-              ))}
+              )}
             </div>
-
-            <h3 className="fw-bold mb-4">
-              {selectedCategory === 'All' ? 'Explore Our Store Products' : `${selectedCategory} Collection`}
-              <span className="fs-6 text-muted ms-2">({filteredProducts.length} items available)</span>
-            </h3>
 
             {loading ? (
               <div className="text-center py-5">
