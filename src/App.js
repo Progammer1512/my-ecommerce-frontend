@@ -293,6 +293,11 @@ function App() {
   };
 
   const addToCart = (product) => {
+    const prodStock = product.stock !== undefined && product.stock !== null ? Number(product.stock) : 0;
+    if (prodStock <= 0) {
+      alert("❌ Sorry, this item is Out of Stock!");
+      return;
+    }
     const existing = cart.find(item => item._id === product._id);
     if (existing) {
       setCart(cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item));
@@ -522,7 +527,7 @@ function App() {
         image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
-        stock: item.stock !== undefined ? item.stock : 10
+        stock: item.stock !== undefined && item.stock !== null ? Number(item.stock) : 0
       });
     }
   };
@@ -691,13 +696,12 @@ function App() {
                 <div className="row g-2 mb-4 p-3 bg-light rounded border">
                   <div className="col-6">
                     <span className="small text-muted d-block fw-bold">Availability:</span>
-                    {/* 🔧 FIXED: Using exact database stock without forced 10 fallback */}
-                    {(selectedProductDetail.stock !== undefined ? Number(selectedProductDetail.stock) : 10) > 0 ? (
+                    {(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) > 0 ? (
                       <span className="text-success fw-bold fs-6">
-                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({selectedProductDetail.stock !== undefined ? selectedProductDetail.stock : 10} Left)
+                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({selectedProductDetail.stock} Left)
                       </span>
                     ) : (
-                      <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock</span>
+                      <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock (0 Left)</span>
                     )}
                   </div>
                   <div className="col-6">
@@ -715,13 +719,22 @@ function App() {
 
                 <div className="mt-auto d-flex gap-3">
                   <button 
-                    className="btn btn-warning btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5"
+                    className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
+                      (selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0 
+                      ? 'btn-secondary disabled' 
+                      : 'btn-warning'
+                    }`}
+                    disabled={(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0}
                     onClick={() => {
                       addToCart(selectedProductDetail);
                       setShowCartModal(true);
                     }}
                   >
-                    <i className="bi bi-cart-plus-fill me-2"></i> Add to Cart & Buy Now
+                    <i className="bi bi-cart-plus-fill me-2"></i>
+                    {(selectedProductDetail.stock !== undefined && selectedProductDetail.stock !== null ? Number(selectedProductDetail.stock) : 0) <= 0 
+                      ? 'Out of Stock' 
+                      : 'Add to Cart & Buy Now'
+                    }
                   </button>
                 </div>
               </div>
@@ -903,7 +916,9 @@ function App() {
             ) : (
               <>
                 <div className="row g-4">
-                  {currentProducts.map((p) => (
+                  {currentProducts.map((p) => {
+                    const currentStock = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                    return (
                     <div key={p._id} className="col-lg-4 col-md-6">
                       <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden">
                         <div 
@@ -919,7 +934,19 @@ function App() {
                           />
                         </div>
                         <div className="card-body d-flex flex-column bg-white border-top">
-                          <span className="badge bg-secondary mb-2 w-auto me-auto">{p.category || 'General'}</span>
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span className="badge bg-secondary">{p.category || 'General'}</span>
+                            
+                            {/* MONGO DB LIVE STOCK DISPLAY */}
+                            {currentStock <= 0 ? (
+                              <span className="badge bg-danger">Out of Stock (0 Left)</span>
+                            ) : currentStock < 5 ? (
+                              <span className="badge bg-warning text-dark">Low Stock ({currentStock} Left)</span>
+                            ) : (
+                              <span className="badge bg-success">In Stock ({currentStock} Left)</span>
+                            )}
+                          </div>
+
                           <h5 
                             className="card-title fw-bold text-dark" 
                             style={{ cursor: 'pointer' }}
@@ -936,15 +963,19 @@ function App() {
                               <button className="btn btn-outline-primary btn-sm fw-bold" onClick={() => handleOpenProductDetail(p)}>
                                 View Details
                               </button>
-                              <button className="btn btn-primary fw-bold rounded-2 px-3" onClick={() => addToCart(p)}>
-                                <i className="bi bi-cart-plus me-1"></i> Add
+                              <button 
+                                className={`btn fw-bold rounded-2 px-3 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
+                                disabled={currentStock <= 0}
+                                onClick={() => addToCart(p)}
+                              >
+                                <i className="bi bi-cart-plus me-1"></i> {currentStock <= 0 ? 'Sold Out' : 'Add'}
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 {totalPages > 1 && (
@@ -1106,7 +1137,7 @@ function App() {
                         className="btn btn-success btn-lg fw-bold px-4" 
                         onClick={() => { setShowCartModal(false); setShowCheckoutModal(true); }}
                       >
-                        Proceed to Checkout &rarr;
+                        Proceed to Checkout &rrarr;
                       </button>
                     </div>
                   </div>
