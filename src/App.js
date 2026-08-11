@@ -188,7 +188,7 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 🟢 FIX: Quiet background polling prevents layout re-renders
+  // 🟢 FIX: Background polling prevents layout re-renders
   useEffect(() => {
     const interval = setInterval(() => {
       fetchProducts(false);
@@ -617,13 +617,18 @@ function App() {
                 <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
                 <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 py-1" onClick={() => setShowSignupModal(true)}>Sign Up</button>
                 
-                {/* 🟢 FIX: Visible on both mobile & desktop */}
-                <div className="d-inline-block">
+                {/* 🟢 COMPACT FANCY GOOGLE LOGIN BUTTON FOR MOBILE & DESKTOP */}
+                <div 
+                  className="d-inline-flex align-items-center shadow-sm rounded-pill border bg-white px-1 py-0 overflow-hidden" 
+                  style={{ transform: 'scale(0.82)', transformOrigin: 'center left', margin: '-4px 0' }}
+                >
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleFailure}
                     shape="pill"
-                    size="small"
+                    size="medium"
+                    theme="filled_blue"
+                    text="signin_with"
                   />
                 </div>
               </div>
