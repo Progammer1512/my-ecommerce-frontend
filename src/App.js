@@ -43,6 +43,10 @@ function App() {
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
+  // PASSWORD VISIBILITY TOGGLE STATES
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   // FULL-PAGE PRODUCT DETAIL STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [allReviews, setAllReviews] = useState([]);
@@ -578,14 +582,13 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative">
       
-      {/* 🟢 BOOTSTRAP RESPONSIVE NAVBAR WITH HAMBURGER CATEGORY MENU */}
+      {/* NAVBAR */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-3">
         <div className="container-fluid p-0">
           
           {/* Top Row: Brand Logo, Hamburger Menu & Cart Button */}
           <div className="d-flex justify-content-between align-items-center w-100 mb-2">
             
-            {/* Logo & Category Hamburger Button */}
             <div className="d-flex align-items-center gap-2">
               <button 
                 className="btn btn-warning btn-sm fw-bold px-2 py-1 shadow-sm d-flex align-items-center justify-content-center"
@@ -646,7 +649,6 @@ function App() {
                 <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
                 <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
                 
-                {/* 🟢 BOOTSTRAP GOOGLE ICON BUTTON FOR MOBILE */}
                 <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
@@ -1463,12 +1465,41 @@ function App() {
                 <button type="button" className="btn-close" onClick={() => setShowSignupModal(false)}></button>
               </div>
               <form onSubmit={handleEmailSignupSubmit}>
-                <div className="mb-2"><input type="text" className="form-control" placeholder="Full Name" required value={signupData.name} onChange={(e) => setSignupData({...signupData, name: e.target.value})} /></div>
-                <div className="mb-2"><input type="email" className="form-control" placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} /></div>
-                <div className="mb-2"><input type="password" className="form-control" placeholder="Password" required value={signupData.password} onChange={(e) => setSignupData({...signupData, password: e.target.value})} /></div>
-                <div className="mb-2"><input type="tel" className="form-control" placeholder="Mobile Number" required value={signupData.mobile} onChange={(e) => setSignupData({...signupData, mobile: e.target.value})} /></div>
-                <div className="mb-2"><textarea className="form-control" rows="2" placeholder="Shipping Address" required value={signupData.address} onChange={(e) => setSignupData({...signupData, address: e.target.value})}></textarea></div>
-                <div className="mb-3"><input type="text" className="form-control" placeholder="Pincode" required value={signupData.pincode} onChange={(e) => setSignupData({...signupData, pincode: e.target.value})} /></div>
+                <div className="mb-2">
+                  <input type="text" className="form-control" placeholder="Full Name" required value={signupData.name} onChange={(e) => setSignupData({...signupData, name: e.target.value})} />
+                </div>
+                <div className="mb-2">
+                  <input type="email" className="form-control" placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} />
+                </div>
+                
+                {/* 🟢 PASSWORD FIELD WITH EYE TOGGLE ICON */}
+                <div className="mb-2 input-group">
+                  <input 
+                    type={showSignupPassword ? "text" : "password"} 
+                    className="form-control" 
+                    placeholder="Password" 
+                    required 
+                    value={signupData.password} 
+                    onChange={(e) => setSignupData({...signupData, password: e.target.value})} 
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary bg-white text-dark"
+                    onClick={() => setShowSignupPassword(!showSignupPassword)}
+                  >
+                    <i className={`bi ${showSignupPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                  </button>
+                </div>
+
+                <div className="mb-2">
+                  <input type="tel" className="form-control" placeholder="Mobile Number" required value={signupData.mobile} onChange={(e) => setSignupData({...signupData, mobile: e.target.value})} />
+                </div>
+                <div className="mb-2">
+                  <textarea className="form-control" rows="2" placeholder="Shipping Address" required value={signupData.address} onChange={(e) => setSignupData({...signupData, address: e.target.value})}></textarea>
+                </div>
+                <div className="mb-3">
+                  <input type="text" className="form-control" placeholder="Pincode" required value={signupData.pincode} onChange={(e) => setSignupData({...signupData, pincode: e.target.value})} />
+                </div>
                 <button type="submit" className="btn btn-warning w-100 fw-bold py-2">Register & Sign Up</button>
               </form>
             </div>
@@ -1486,8 +1517,29 @@ function App() {
                 <button type="button" className="btn-close" onClick={() => setShowLoginModal(false)}></button>
               </div>
               <form onSubmit={handleEmailLoginSubmit}>
-                <div className="mb-3"><input type="email" className="form-control" placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} /></div>
-                <div className="mb-3"><input type="password" className="form-control" placeholder="Password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} /></div>
+                <div className="mb-3">
+                  <input type="email" className="form-control" placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} />
+                </div>
+                
+                {/* 🟢 PASSWORD FIELD WITH EYE TOGGLE ICON */}
+                <div className="mb-3 input-group">
+                  <input 
+                    type={showLoginPassword ? "text" : "password"} 
+                    className="form-control" 
+                    placeholder="Password" 
+                    required 
+                    value={loginData.password} 
+                    onChange={(e) => setLoginData({...loginData, password: e.target.value})} 
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary bg-white text-dark"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  >
+                    <i className={`bi ${showLoginPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                  </button>
+                </div>
+
                 <button type="submit" className="btn btn-dark w-100 fw-bold py-2 text-warning">Sign In</button>
               </form>
             </div>
