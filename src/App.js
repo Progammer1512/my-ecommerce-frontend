@@ -894,7 +894,7 @@ function App() {
             )}
           </div>
 
-          <div className="mt-5">
+          <div className="mt-5 mb-4">
             <h3 className="fw-bold mb-4 text-dark fs-4">You May Also Like (Similar Store Products)</h3>
             
             <div className="row g-2 g-md-4">
@@ -977,7 +977,7 @@ function App() {
             </div>
           )}
 
-          <div className="container py-2 px-2 px-md-3">
+          <div className="container py-2 px-2 px-md-3 mb-4">
             <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
               <h4 className="fw-bold m-0 fs-5">
                 {selectedCategory === 'All' ? 'Explore Our Products' : `${selectedCategory} Collection`}
@@ -1007,71 +1007,72 @@ function App() {
                     const currentStock = getProductStock(p);
                     
                     return (
-                    <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                      <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
-                        <div 
-                          className="bg-white text-center p-2 p-md-3" 
-                          style={{ height: '150px', cursor: 'pointer' }}
-                          onClick={() => handleOpenProductDetail(p)}
-                        >
-                          <img 
-                            src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                            className="img-fluid h-100" 
-                            alt={p.name} 
-                            style={{ objectFit: 'contain' }}
-                          />
-                        </div>
-                        
-                        <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top flex-grow-1">
-                          <div className="d-flex justify-content-between align-items-center mb-1">
-                            <span className="badge bg-secondary" style={{ fontSize: '9px' }}>{p.category || 'General'}</span>
-                            
-                            {currentStock <= 0 ? (
-                              <span className="badge bg-danger" style={{ fontSize: '9px' }}>Out of Stock</span>
-                            ) : currentStock < 5 ? (
-                              <span className="badge bg-warning text-dark" style={{ fontSize: '9px' }}>Low Stock ({currentStock})</span>
-                            ) : (
-                              <span className="badge bg-success" style={{ fontSize: '9px' }}>In Stock ({currentStock})</span>
-                            )}
-                          </div>
-
-                          <h6 
-                            className="card-title fw-bold text-dark text-truncate mb-1" 
-                            style={{ cursor: 'pointer', fontSize: '13px' }}
+                      <div key={p._id} className="col-6 col-md-6 col-lg-4">
+                        <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
+                          <div 
+                            className="bg-white text-center p-2 p-md-3" 
+                            style={{ height: '150px', cursor: 'pointer' }}
                             onClick={() => handleOpenProductDetail(p)}
-                            title={p.name}
                           >
-                            {p.name}
-                          </h6>
+                            <img 
+                              src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
+                              className="img-fluid h-100" 
+                              alt={p.name} 
+                              style={{ objectFit: 'contain' }}
+                            />
+                          </div>
                           
-                          <p className="card-text text-muted small flex-grow-1 d-none d-md-block" style={{ fontSize: '11px' }}>
-                            {p.description ? p.description.substring(0, 50) + '...' : 'No description'}
-                          </p>
-                          
-                          <div className="d-flex align-items-center justify-content-between mt-auto pt-2">
-                            <span className="fw-bold text-success fs-6">₹{p.price}</span>
+                          <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top flex-grow-1">
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="badge bg-secondary" style={{ fontSize: '9px' }}>{p.category || 'General'}</span>
+                              
+                              {currentStock <= 0 ? (
+                                <span className="badge bg-danger" style={{ fontSize: '9px' }}>Out of Stock</span>
+                              ) : currentStock < 5 ? (
+                                <span className="badge bg-warning text-dark" style={{ fontSize: '9px' }}>Low Stock ({currentStock})</span>
+                              ) : (
+                                <span className="badge bg-success" style={{ fontSize: '9px' }}>In Stock ({currentStock})</span>
+                              )}
+                            </div>
+
+                            <h6 
+                              className="card-title fw-bold text-dark text-truncate mb-1" 
+                              style={{ cursor: 'pointer', fontSize: '13px' }}
+                              onClick={() => handleOpenProductDetail(p)}
+                              title={p.name}
+                            >
+                              {p.name}
+                            </h6>
                             
-                            <div className="d-flex gap-1">
-                              <button 
-                                className={`btn btn-sm fw-bold px-2 py-1 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
-                                style={{ fontSize: '11px' }}
-                                disabled={currentStock <= 0}
-                                onClick={() => addToCart(p)}
-                              >
-                                <i className="bi bi-cart-plus me-1"></i>
-                                {currentStock <= 0 ? 'Sold Out' : 'Add'}
-                              </button>
+                            <p className="card-text text-muted small flex-grow-1 d-none d-md-block" style={{ fontSize: '11px' }}>
+                              {p.description ? p.description.substring(0, 50) + '...' : 'No description'}
+                            </p>
+                            
+                            <div className="d-flex align-items-center justify-content-between mt-auto pt-2">
+                              <span className="fw-bold text-success fs-6">₹{p.price}</span>
+                              
+                              <div className="d-flex gap-1">
+                                <button 
+                                  className={`btn btn-sm fw-bold px-2 py-1 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
+                                  style={{ fontSize: '11px' }}
+                                  disabled={currentStock <= 0}
+                                  onClick={() => addToCart(p)}
+                                >
+                                  <i className="bi bi-cart-plus me-1"></i>
+                                  {currentStock <= 0 ? 'Sold Out' : 'Add'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                 </div>
 
                 {/* SMART COMPACT PAGINATION */}
                 {totalPages > 1 && (
-                  <div className="d-flex justify-content-center align-items-center mt-4 mb-2">
+                  <div className="d-flex justify-content-center align-items-center mt-4 mb-4">
                     <nav>
                       <ul className="pagination pagination-md shadow-sm m-0">
                         {/* PREVIOUS BUTTON */}
@@ -1117,10 +1118,41 @@ function App() {
         </>
       )}
 
-      {/* Floating Chatbot Assistant */}
-      <div className="position-fixed bottom-0 end-0 m-3 z-3">
+      {/* FOOTER SECTION AT THE BOTTOM TO EXTEND PAGE HEIGHT */}
+      <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
+        <div className="container">
+          <div className="row g-4">
+            <div className="col-md-4">
+              <h5 className="fw-bold text-warning mb-2"><i className="bi bi-shop me-1"></i>TechStore</h5>
+              <p className="small text-white-50">
+                Your trusted destination for premium electronics, summer fashion, and top-tier accessories at best prices.
+              </p>
+            </div>
+            <div className="col-md-4">
+              <h6 className="fw-bold text-white mb-2">Quick Navigation</h6>
+              <ul className="list-unstyled small text-white-50 m-0 d-flex flex-column gap-1">
+                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => setSelectedProductDetail(null)}>Home Catalog</a></li>
+                <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
+                <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
+              </ul>
+            </div>
+            <div className="col-md-4">
+              <h6 className="fw-bold text-white mb-2">Customer Support</h6>
+              <p className="small text-white-50 mb-1"><i className="bi bi-shield-check text-success me-1"></i> 100% Safe & Verified Payments</p>
+              <p className="small text-white-50 mb-0"><i className="bi bi-truck text-info me-1"></i> Express Pan-India Delivery</p>
+            </div>
+          </div>
+          <hr className="my-3 border-secondary" />
+          <div className="text-center text-white-50 small">
+            © 2026 TechStore Inc. All rights reserved. Built with React & MongoDB.
+          </div>
+        </div>
+      </footer>
+
+      {/* FLOATING COMPACT AI HELPER ASSISTANT */}
+      <div className="position-fixed bottom-0 end-0 m-2 m-md-3 z-3">
         {showChatbot ? (
-          <div className="card shadow-lg border-0" style={{ width: '290px', height: '380px' }}>
+          <div className="card shadow-lg border-0" style={{ width: '280px', height: '360px' }}>
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
               <span className="fw-bold small"><i className="bi bi-robot me-1"></i>Store AI Assistant</span>
               <button className="btn-close btn-close-white" onClick={() => setShowChatbot(false)}></button>
@@ -1133,8 +1165,13 @@ function App() {
             </div>
           </div>
         ) : (
-          <button className="btn btn-primary rounded-circle p-2 p-md-3 shadow-lg fw-bold" onClick={() => setShowChatbot(true)}>
-            💬 AI Helper
+          <button 
+            className="btn btn-primary rounded-circle shadow-lg fw-bold d-flex align-items-center justify-content-center" 
+            style={{ width: '48px', height: '48px', fontSize: '12px' }}
+            onClick={() => setShowChatbot(true)}
+            title="AI Assistant"
+          >
+            💬 AI
           </button>
         )}
       </div>
