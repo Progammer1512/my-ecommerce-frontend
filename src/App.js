@@ -301,8 +301,24 @@ function App() {
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 350, behavior: 'smooth' });
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      window.scrollTo({ top: 350, behavior: 'smooth' });
+    }
+  };
+
+  // HELPER: GET 3 VISIBLE PAGE NUMBERS
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 3) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage === 1) {
+      return [1, 2, 3];
+    }
+    if (currentPage === totalPages) {
+      return [totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [currentPage - 1, currentPage, currentPage + 1];
   };
 
   const addToCart = (product) => {
@@ -881,7 +897,6 @@ function App() {
           <div className="mt-5">
             <h3 className="fw-bold mb-4 text-dark fs-4">You May Also Like (Similar Store Products)</h3>
             
-            {/* 2 COLUMNS PER ROW IN MOBILE FOR SIMILAR PRODUCTS */}
             <div className="row g-2 g-md-4">
               {products.filter(p => p._id !== selectedProductDetail._id).slice(0, 6).map((p) => (
                 <div key={p._id} className="col-6 col-md-6 col-lg-4">
@@ -987,7 +1002,6 @@ function App() {
               </div>
             ) : (
               <>
-                {/* 🟢 PERFECT 2-COLUMNS PER ROW FOR MOBILE SCREENS */}
                 <div className="row g-2 g-md-4">
                   {currentProducts.map((p) => {
                     const currentStock = getProductStock(p);
@@ -1055,20 +1069,43 @@ function App() {
                   )})}
                 </div>
 
+                {/* SMART COMPACT PAGINATION */}
                 {totalPages > 1 && (
-                  <div className="d-flex justify-content-center align-items-center mt-4">
+                  <div className="d-flex justify-content-center align-items-center mt-4 mb-2">
                     <nav>
-                      <ul className="pagination pagination-md shadow-sm">
+                      <ul className="pagination pagination-md shadow-sm m-0">
+                        {/* PREVIOUS BUTTON */}
                         <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                          <button className="page-item-link btn btn-outline-primary me-1 fw-bold btn-sm" onClick={() => handlePageChange(currentPage - 1)}>&laquo;</button>
+                          <button 
+                            className="page-link fw-bold px-3 py-2" 
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
                         </li>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                          <li key={page} className="page-item me-1">
-                            <button className={`btn btn-sm fw-bold ${currentPage === page ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => handlePageChange(page)}>{page}</button>
+
+                        {/* ONLY 3 VISIBLE NUMERIC PAGE BUTTONS */}
+                        {getVisiblePageNumbers().map((page) => (
+                          <li key={page} className="page-item">
+                            <button 
+                              className={`page-link fw-bold px-3 py-2 ${currentPage === page ? 'bg-primary text-white border-primary' : 'text-primary bg-white'}`} 
+                              onClick={() => handlePageChange(page)}
+                            >
+                              {page}
+                            </button>
                           </li>
                         ))}
+
+                        {/* NEXT BUTTON */}
                         <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                          <button className="page-item-link btn btn-outline-primary ms-1 fw-bold btn-sm" onClick={() => handlePageChange(currentPage + 1)}>&raquo;</button>
+                          <button 
+                            className="page-link fw-bold px-3 py-2" 
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next &raquo;
+                          </button>
                         </li>
                       </ul>
                     </nav>
