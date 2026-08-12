@@ -105,7 +105,7 @@ function App() {
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 15;
+  const productsPerPage = 16;
 
   const fetchCoupons = async () => {
     try {
@@ -580,10 +580,10 @@ function App() {
   const currentBanner = heroBanners[currentSlide] || heroBanners[0];
 
   return (
-    <div className="bg-light min-vh-100 position-relative">
+    <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
       
       {/* NAVBAR */}
-      <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-3">
+      <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0">
           
           {/* Top Row: Brand Logo, Hamburger Menu & Cart Button */}
@@ -601,7 +601,7 @@ function App() {
               </button>
 
               <a 
-                className="navbar-brand fw-bold text-warning fs-3 m-0" 
+                className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
                 href="#home"
                 onClick={() => setSelectedProductDetail(null)}
               >
@@ -726,7 +726,7 @@ function App() {
             &larr; Back to All Products Catalog
           </button>
 
-          <div className="card border-0 shadow-lg p-4 bg-white rounded-4 mb-5">
+          <div className="card border-0 shadow-lg p-3 p-md-4 bg-white rounded-4 mb-5">
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
                 <div className="p-3 border rounded-3 bg-white shadow-sm position-relative">
@@ -747,7 +747,7 @@ function App() {
                   {selectedProductDetail.category || 'General'}
                 </span>
                 
-                <h1 className="fw-bold text-dark mb-2 display-6">{selectedProductDetail.name}</h1>
+                <h1 className="fw-bold text-dark mb-2 fs-3 fs-md-2">{selectedProductDetail.name}</h1>
                 
                 <div className="d-flex align-items-center gap-2 mb-3">
                   <span className="badge bg-success px-2 py-1 fs-6 fw-bold">
@@ -759,8 +759,8 @@ function App() {
                 </div>
 
                 <div className="d-flex align-items-baseline gap-3 mb-3">
-                  <h1 className="text-success fw-bold display-5 m-0">₹{selectedProductDetail.price}</h1>
-                  <span className="text-muted text-decoration-line-through fs-4">
+                  <h1 className="text-success fw-bold display-6 m-0">₹{selectedProductDetail.price}</h1>
+                  <span className="text-muted text-decoration-line-through fs-5">
                     ₹{Math.round(selectedProductDetail.price * 1.15)}
                   </span>
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
@@ -815,7 +815,7 @@ function App() {
           </div>
 
           {/* REVIEWS SECTION */}
-          <div className="card border-0 shadow-sm p-4 bg-white rounded-4 mb-5">
+          <div className="card border-0 shadow-sm p-3 p-md-4 bg-white rounded-4 mb-5">
             <h4 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
               <i className="bi bi-chat-left-quote-fill text-warning"></i> Customer Ratings & Verified Reviews
             </h4>
@@ -879,14 +879,16 @@ function App() {
           </div>
 
           <div className="mt-5">
-            <h3 className="fw-bold mb-4 text-dark">You May Also Like (Similar Store Products)</h3>
-            <div className="row g-4">
+            <h3 className="fw-bold mb-4 text-dark fs-4">You May Also Like (Similar Store Products)</h3>
+            
+            {/* 2 COLUMNS PER ROW IN MOBILE FOR SIMILAR PRODUCTS */}
+            <div className="row g-2 g-md-4">
               {products.filter(p => p._id !== selectedProductDetail._id).slice(0, 6).map((p) => (
-                <div key={p._id} className="col-lg-4 col-md-6">
+                <div key={p._id} className="col-6 col-md-6 col-lg-4">
                   <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden">
                     <div 
-                      className="bg-white text-center p-3" 
-                      style={{ height: '200px', cursor: 'pointer' }}
+                      className="bg-white text-center p-2 p-md-3" 
+                      style={{ height: '160px', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
                       <img 
@@ -896,19 +898,19 @@ function App() {
                         style={{ objectFit: 'contain' }}
                       />
                     </div>
-                    <div className="card-body d-flex flex-column bg-white border-top">
-                      <span className="badge bg-secondary mb-2 w-auto me-auto">{p.category || 'General'}</span>
+                    <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top">
+                      <span className="badge bg-secondary mb-1 w-auto me-auto" style={{ fontSize: '10px' }}>{p.category || 'General'}</span>
                       <h6 
-                        className="card-title fw-bold text-dark text-truncate" 
+                        className="card-title fw-bold text-dark text-truncate small m-0 mb-1" 
                         style={{ cursor: 'pointer' }}
                         onClick={() => handleOpenProductDetail(p)}
                       >
                         {p.name}
                       </h6>
-                      <div className="d-flex align-items-center justify-content-between mt-3">
-                        <span className="fs-5 fw-bold text-success">₹{p.price}</span>
-                        <button className="btn btn-outline-primary btn-sm fw-bold" onClick={() => handleOpenProductDetail(p)}>
-                          View Item
+                      <div className="d-flex align-items-center justify-content-between mt-auto pt-2">
+                        <span className="fw-bold text-success fs-6">₹{p.price}</span>
+                        <button className="btn btn-outline-primary btn-sm py-0 px-2 fw-bold" style={{ fontSize: '11px' }} onClick={() => handleOpenProductDetail(p)}>
+                          View
                         </button>
                       </div>
                     </div>
@@ -921,18 +923,18 @@ function App() {
       ) : (
         <>
           {currentBanner && (
-            <div className="container mt-3 mb-2">
+            <div className="container mt-3 mb-2 px-2 px-md-3">
               <div 
-                className="rounded-4 p-4 text-white shadow-lg overflow-hidden position-relative"
-                style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '180px' }}
+                className="rounded-4 p-3 p-md-4 text-white shadow-lg overflow-hidden position-relative"
+                style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px' }}
               >
                 <div className="row align-items-center">
                   <div className="col-md-8">
-                    <span className="badge bg-warning text-dark fw-bold mb-2 px-3 py-2">
+                    <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small">
                       {currentBanner.badge || 'SPECIAL OFFER'}
                     </span>
-                    <h2 className="fw-bold m-0 display-6">{currentBanner.title}</h2>
-                    <p className="lead m-0 mt-1 text-white-50 fs-6">{currentBanner.subtitle}</p>
+                    <h2 className="fw-bold m-0 fs-4 fs-md-2">{currentBanner.title}</h2>
+                    <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block">{currentBanner.subtitle}</p>
                   </div>
                   <div className="col-md-4 text-end d-none d-md-block">
                     <img 
@@ -950,7 +952,7 @@ function App() {
                       <button
                         key={idx}
                         className={`btn btn-sm p-1 rounded-circle ${currentSlide === idx ? 'bg-warning' : 'bg-white bg-opacity-50'}`}
-                        style={{ width: '10px', height: '10px' }}
+                        style={{ width: '8px', height: '8px' }}
                         onClick={() => setCurrentSlide(idx)}
                       />
                     ))}
@@ -960,15 +962,15 @@ function App() {
             </div>
           )}
 
-          <div className="container py-3">
-            <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-              <h3 className="fw-bold m-0">
-                {selectedCategory === 'All' ? 'Explore Our Store Products' : `${selectedCategory} Collection`}
-                <span className="fs-6 text-muted ms-2">({filteredProducts.length} items available)</span>
-              </h3>
+          <div className="container py-2 px-2 px-md-3">
+            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+              <h4 className="fw-bold m-0 fs-5">
+                {selectedCategory === 'All' ? 'Explore Our Products' : `${selectedCategory} Collection`}
+                <span className="fs-6 text-muted ms-2">({filteredProducts.length} items)</span>
+              </h4>
               
               {selectedCategory !== 'All' && (
-                <button className="btn btn-outline-secondary btn-sm fw-bold rounded-pill" onClick={() => setSelectedCategory('All')}>
+                <button className="btn btn-outline-secondary btn-sm fw-bold rounded-pill py-0 px-2" style={{ fontSize: '12px' }} onClick={() => setSelectedCategory('All')}>
                   Showing: {selectedCategory} ✕ (Show All)
                 </button>
               )}
@@ -985,16 +987,17 @@ function App() {
               </div>
             ) : (
               <>
-                <div className="row g-4">
+                {/* 🟢 PERFECT 2-COLUMNS PER ROW FOR MOBILE SCREENS */}
+                <div className="row g-2 g-md-4">
                   {currentProducts.map((p) => {
                     const currentStock = getProductStock(p);
                     
                     return (
-                    <div key={p._id} className="col-lg-4 col-md-6">
-                      <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden">
+                    <div key={p._id} className="col-6 col-md-6 col-lg-4">
+                      <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
                         <div 
-                          className="bg-white text-center p-3" 
-                          style={{ height: '220px', cursor: 'pointer' }}
+                          className="bg-white text-center p-2 p-md-3" 
+                          style={{ height: '150px', cursor: 'pointer' }}
                           onClick={() => handleOpenProductDetail(p)}
                         >
                           <img 
@@ -1004,41 +1007,45 @@ function App() {
                             style={{ objectFit: 'contain' }}
                           />
                         </div>
-                        <div className="card-body d-flex flex-column bg-white border-top">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="badge bg-secondary">{p.category || 'General'}</span>
+                        
+                        <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top flex-grow-1">
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="badge bg-secondary" style={{ fontSize: '9px' }}>{p.category || 'General'}</span>
                             
                             {currentStock <= 0 ? (
-                              <span className="badge bg-danger">Out of Stock (0 Left)</span>
+                              <span className="badge bg-danger" style={{ fontSize: '9px' }}>Out of Stock</span>
                             ) : currentStock < 5 ? (
-                              <span className="badge bg-warning text-dark">Low Stock ({currentStock} Left)</span>
+                              <span className="badge bg-warning text-dark" style={{ fontSize: '9px' }}>Low Stock ({currentStock})</span>
                             ) : (
-                              <span className="badge bg-success">In Stock ({currentStock} Left)</span>
+                              <span className="badge bg-success" style={{ fontSize: '9px' }}>In Stock ({currentStock})</span>
                             )}
                           </div>
 
-                          <h5 
-                            className="card-title fw-bold text-dark" 
-                            style={{ cursor: 'pointer' }}
+                          <h6 
+                            className="card-title fw-bold text-dark text-truncate mb-1" 
+                            style={{ cursor: 'pointer', fontSize: '13px' }}
                             onClick={() => handleOpenProductDetail(p)}
+                            title={p.name}
                           >
                             {p.name}
-                          </h5>
-                          <p className="card-text text-muted small flex-grow-1">
-                            {p.description ? p.description.substring(0, 80) + '...' : 'No description available'}
+                          </h6>
+                          
+                          <p className="card-text text-muted small flex-grow-1 d-none d-md-block" style={{ fontSize: '11px' }}>
+                            {p.description ? p.description.substring(0, 50) + '...' : 'No description'}
                           </p>
-                          <div className="d-flex align-items-center justify-content-between mt-3">
-                            <span className="fs-4 fw-bold text-success">₹{p.price}</span>
-                            <div className="d-flex gap-2">
-                              <button className="btn btn-outline-primary btn-sm fw-bold" onClick={() => handleOpenProductDetail(p)}>
-                                View Details
-                              </button>
+                          
+                          <div className="d-flex align-items-center justify-content-between mt-auto pt-2">
+                            <span className="fw-bold text-success fs-6">₹{p.price}</span>
+                            
+                            <div className="d-flex gap-1">
                               <button 
-                                className={`btn fw-bold rounded-2 px-3 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
+                                className={`btn btn-sm fw-bold px-2 py-1 ${currentStock <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
+                                style={{ fontSize: '11px' }}
                                 disabled={currentStock <= 0}
                                 onClick={() => addToCart(p)}
                               >
-                                <i className="bi bi-cart-plus me-1"></i> {currentStock <= 0 ? 'Sold Out' : 'Add'}
+                                <i className="bi bi-cart-plus me-1"></i>
+                                {currentStock <= 0 ? 'Sold Out' : 'Add'}
                               </button>
                             </div>
                           </div>
@@ -1049,19 +1056,19 @@ function App() {
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="d-flex justify-content-center align-items-center mt-5">
+                  <div className="d-flex justify-content-center align-items-center mt-4">
                     <nav>
-                      <ul className="pagination pagination-lg shadow-sm">
+                      <ul className="pagination pagination-md shadow-sm">
                         <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                          <button className="page-item-link btn btn-outline-primary me-2 fw-bold" onClick={() => handlePageChange(currentPage - 1)}>&laquo; Previous</button>
+                          <button className="page-item-link btn btn-outline-primary me-1 fw-bold btn-sm" onClick={() => handlePageChange(currentPage - 1)}>&laquo;</button>
                         </li>
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <li key={page} className="page-item me-1">
-                            <button className={`btn fw-bold ${currentPage === page ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => handlePageChange(page)}>{page}</button>
+                            <button className={`btn btn-sm fw-bold ${currentPage === page ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => handlePageChange(page)}>{page}</button>
                           </li>
                         ))}
                         <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                          <button className="page-item-link btn btn-outline-primary ms-2 fw-bold" onClick={() => handlePageChange(currentPage + 1)}>Next &raquo;</button>
+                          <button className="page-item-link btn btn-outline-primary ms-1 fw-bold btn-sm" onClick={() => handlePageChange(currentPage + 1)}>&raquo;</button>
                         </li>
                       </ul>
                     </nav>
@@ -1074,14 +1081,14 @@ function App() {
       )}
 
       {/* Floating Chatbot Assistant */}
-      <div className="position-fixed bottom-0 end-0 m-4 z-3">
+      <div className="position-fixed bottom-0 end-0 m-3 z-3">
         {showChatbot ? (
-          <div className="card shadow-lg border-0" style={{ width: '320px', height: '400px' }}>
-            <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-              <span className="fw-bold"><i className="bi bi-robot me-2"></i>Store AI Assistant</span>
+          <div className="card shadow-lg border-0" style={{ width: '290px', height: '380px' }}>
+            <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+              <span className="fw-bold small"><i className="bi bi-robot me-1"></i>Store AI Assistant</span>
               <button className="btn-close btn-close-white" onClick={() => setShowChatbot(false)}></button>
             </div>
-            <div className="card-body overflow-auto p-3 bg-light">
+            <div className="card-body overflow-auto p-2 bg-light">
               <div className="bg-white p-2 rounded mb-2 shadow-sm small">👋 Hello! How can I help you find products or track your order today?</div>
             </div>
             <div className="card-footer p-2 bg-white">
@@ -1089,7 +1096,7 @@ function App() {
             </div>
           </div>
         ) : (
-          <button className="btn btn-primary rounded-circle p-3 shadow-lg fw-bold" onClick={() => setShowChatbot(true)}>
+          <button className="btn btn-primary rounded-circle p-2 p-md-3 shadow-lg fw-bold" onClick={() => setShowChatbot(true)}>
             💬 AI Helper
           </button>
         )}
@@ -1104,53 +1111,55 @@ function App() {
                 <h5 className="modal-header-title fw-bold text-warning mb-0">Your Shopping Cart</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCartModal(false)}></button>
               </div>
-              <div className="modal-body p-4">
+              <div className="modal-body p-3 p-md-4">
                 {cart.length === 0 ? (
                   <div className="text-center py-4 text-muted">Your cart is currently empty.</div>
                 ) : (
                   <div>
-                    <table className="table table-hover align-middle">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th>Price</th>
-                          <th className="text-center">Qty</th>
-                          <th>Subtotal</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cart.map((item) => (
-                          <tr key={item._id}>
-                            <td className="fw-bold">{item.name}</td>
-                            <td>₹{item.price}</td>
-                            <td className="text-center">
-                              <div className="d-inline-flex align-items-center border rounded bg-light px-1">
-                                <button 
-                                  className="btn btn-sm btn-link text-danger text-decoration-none fw-bold px-2 py-0 fs-5"
-                                  onClick={() => updateCartQty(item._id, -1)}
-                                  title="Decrease quantity"
-                                >
-                                  -
-                                </button>
-                                <span className="fw-bold px-2">{item.qty}</span>
-                                <button 
-                                  className="btn btn-sm btn-link text-success text-decoration-none fw-bold px-2 py-0 fs-5"
-                                  onClick={() => updateCartQty(item._id, 1)}
-                                  title="Increase quantity"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </td>
-                            <td className="fw-bold text-success">₹{item.price * item.qty}</td>
-                            <td>
-                              <button className="btn btn-outline-danger btn-sm" onClick={() => removeFromCart(item._id)}>Remove</button>
-                            </td>
+                    <div className="table-responsive">
+                      <table className="table table-hover align-middle">
+                        <thead>
+                          <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th className="text-center">Qty</th>
+                            <th>Subtotal</th>
+                            <th>Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {cart.map((item) => (
+                            <tr key={item._id}>
+                              <td className="fw-bold small">{item.name}</td>
+                              <td className="small">₹{item.price}</td>
+                              <td className="text-center">
+                                <div className="d-inline-flex align-items-center border rounded bg-light px-1">
+                                  <button 
+                                    className="btn btn-sm btn-link text-danger text-decoration-none fw-bold px-2 py-0 fs-5"
+                                    onClick={() => updateCartQty(item._id, -1)}
+                                    title="Decrease quantity"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="fw-bold px-2 small">{item.qty}</span>
+                                  <button 
+                                    className="btn btn-sm btn-link text-success text-decoration-none fw-bold px-2 py-0 fs-5"
+                                    onClick={() => updateCartQty(item._id, 1)}
+                                    title="Increase quantity"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="fw-bold text-success small">₹{item.price * item.qty}</td>
+                              <td>
+                                <button className="btn btn-outline-danger btn-sm py-0 px-2 small" onClick={() => removeFromCart(item._id)}>Remove</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
                     <div className="p-3 bg-light rounded border my-3">
                       <div className="mb-2">
@@ -1196,15 +1205,15 @@ function App() {
                       )}
                     </div>
 
-                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
                       <div>
                         {appliedCoupon && discountAmount > 0 && (
                           <span className="text-muted text-decoration-line-through d-block small">Subtotal: ₹{rawCartTotal}</span>
                         )}
-                        <h4 className="fw-bold m-0">Final Total: <span className="text-success">₹{finalCartTotal}</span></h4>
+                        <h4 className="fw-bold m-0 fs-5">Final Total: <span className="text-success">₹{finalCartTotal}</span></h4>
                       </div>
                       <button 
-                        className="btn btn-success btn-lg fw-bold px-4" 
+                        className="btn btn-success fw-bold px-4 py-2" 
                         onClick={() => { setShowCartModal(false); setShowCheckoutModal(true); }}
                       >
                         Proceed to Checkout &rrarr;
@@ -1227,23 +1236,23 @@ function App() {
                 <h5 className="modal-title fw-bold">📦 Secure Shipping & Payment Checkout</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCheckoutModal(false)}></button>
               </div>
-              <div className="modal-body p-4">
+              <div className="modal-body p-3 p-md-4">
                 <form onSubmit={handlePlaceOrder}>
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-bold">Full Name</label>
+                      <label className="form-label fw-bold small">Full Name</label>
                       <input type="text" className="form-control" required value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Enter your full name" />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-bold">Phone Number</label>
+                      <label className="form-label fw-bold small">Phone Number</label>
                       <input type="tel" className="form-control" required value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="+91 9876543210" />
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-bold">Complete Shipping Address</label>
+                      <label className="form-label fw-bold small">Complete Shipping Address</label>
                       <textarea className="form-control" rows="2" required value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="House No, Building, Street, Area, Pincode"></textarea>
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-bold">Select Payment Method</label>
+                      <label className="form-label fw-bold small">Select Payment Method</label>
                       <select className="form-select" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                         <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
                         <option value="UPI / GPay / PhonePe">UPI / GPay / PhonePe</option>
@@ -1252,14 +1261,14 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-light rounded mt-4 border d-flex justify-content-between align-items-center">
+                  <div className="p-3 bg-light rounded mt-4 border d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                       <span className="text-muted small d-block">Payable Amount ({cartItemCount} Items)</span>
-                      <span className="fs-4 fw-bold text-success">₹{finalCartTotal}</span>
+                      <span className="fs-5 fw-bold text-success">₹{finalCartTotal}</span>
                     </div>
                     <div className="d-flex gap-2">
-                      <button type="button" className="btn btn-outline-secondary fw-bold" onClick={() => { setShowCheckoutModal(false); setShowCartModal(true); }}>Back to Cart</button>
-                      <button type="submit" className="btn btn-success fw-bold px-4 py-2">Confirm & Place Order</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm fw-bold" onClick={() => { setShowCheckoutModal(false); setShowCartModal(true); }}>Back</button>
+                      <button type="submit" className="btn btn-success btn-sm fw-bold px-3 py-2">Confirm & Place Order</button>
                     </div>
                   </div>
                 </form>
@@ -1281,7 +1290,7 @@ function App() {
                 </h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowOrderTracking(false)}></button>
               </div>
-              <div className="modal-body p-4">
+              <div className="modal-body p-3 p-md-4">
                 {userOrders.length === 0 ? (
                   <div className="text-center py-5 text-muted">
                     <i className="bi bi-box-seam fs-1 text-secondary d-block mb-2"></i>
@@ -1296,12 +1305,12 @@ function App() {
                         <div key={ord._id} className="card border shadow-sm p-3 bg-white rounded-3">
                           <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                             <div>
-                              <span className="fw-bold text-primary fs-6">Order #{ord._id}</span>
-                              <small className="text-muted ms-2">
+                              <span className="fw-bold text-primary small">Order #{ord._id}</span>
+                              <small className="text-muted ms-2 d-block d-sm-inline">
                                 ({ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent Order'})
                               </small>
                             </div>
-                            <span className={`badge px-3 py-2 fs-6 ${
+                            <span className={`badge px-2 py-1 small ${
                               ord.status === 'Delivered' ? 'bg-success' : 
                               ord.status === 'In Transit' || ord.status === 'Shipped' || ord.status === 'Out for Delivery' ? 'bg-primary' :
                               ord.status && ord.status.includes('Return') ? 'bg-warning text-dark' :
@@ -1313,26 +1322,26 @@ function App() {
                           </div>
 
                           {(!ord.status || (!ord.status.includes('Return') && !ord.status.includes('Refund') && ord.status !== 'Cancelled')) && (
-                            <div className="mb-4 p-3 bg-light rounded border">
+                            <div className="mb-4 p-2 p-md-3 bg-light rounded border">
                               <div className="d-flex justify-content-between align-items-center position-relative">
                                 <div className="position-absolute top-50 start-0 translate-middle-y bg-secondary bg-opacity-25" style={{ height: '4px', width: '100%', zIndex: 0 }}></div>
                                 <div className="position-absolute top-50 start-0 translate-middle-y bg-success transition-all" style={{ height: '4px', width: `${((stepNum - 1) / 3) * 100}%`, zIndex: 1, transition: 'width 0.4s ease' }}></div>
 
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
-                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 1 ? 'bg-success text-white' : 'bg-secondary text-white'}`} style={{ width: '32px', height: '32px', fontSize: '14px' }}>✓</div>
-                                  <small className="fw-bold d-block mt-1 text-dark" style={{ fontSize: '11px' }}>Placed</small>
+                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 1 ? 'bg-success text-white' : 'bg-secondary text-white'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>✓</div>
+                                  <small className="fw-bold d-block mt-1 text-dark" style={{ fontSize: '10px' }}>Placed</small>
                                 </div>
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
-                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 2 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '32px', height: '32px', fontSize: '14px' }}>{stepNum >= 2 ? '✓' : '2'}</div>
-                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 2 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '11px' }}>Processing</small>
+                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 2 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>{stepNum >= 2 ? '✓' : '2'}</div>
+                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 2 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '10px' }}>Processing</small>
                                 </div>
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
-                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 3 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '32px', height: '32px', fontSize: '14px' }}>{stepNum >= 3 ? '✓' : '3'}</div>
-                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 3 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '11px' }}>In Transit</small>
+                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 3 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>{stepNum >= 3 ? '✓' : '3'}</div>
+                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 3 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '10px' }}>In Transit</small>
                                 </div>
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
-                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 4 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '32px', height: '32px', fontSize: '14px' }}>{stepNum >= 4 ? '✓' : '4'}</div>
-                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 4 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '11px' }}>Delivered</small>
+                                  <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 4 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>{stepNum >= 4 ? '✓' : '4'}</div>
+                                  <small className={`fw-bold d-block mt-1 ${stepNum >= 4 ? 'text-success' : 'text-muted'}`} style={{ fontSize: '10px' }}>Delivered</small>
                                 </div>
                               </div>
                             </div>
@@ -1343,28 +1352,28 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className="d-flex align-items-center gap-2 p-2 rounded border bg-light shadow-sm" style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded border bg-white" width="45" height="45" style={{ objectFit: 'cover' }} />
+                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded border bg-white" width="40" height="40" style={{ objectFit: 'cover' }} />
                                   <div>
-                                    <div className="fw-bold small text-dark text-truncate" style={{ maxWidth: '160px' }}>{item.name}</div>
-                                    <span className="badge bg-secondary" style={{ fontSize: '10px' }}>Qty: {item.qty || 1}</span>
+                                    <div className="fw-bold small text-dark text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
+                                    <span className="badge bg-secondary" style={{ fontSize: '9px' }}>Qty: {item.qty || 1}</span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
 
-                          <div className="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <span className="fw-bold text-success">Total Amount: ₹{ord.totalPrice}</span>
+                          <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
+                            <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className="badge bg-light text-dark border me-1">{ord.paymentMethod || 'COD'}</span>
+                              <span className="badge bg-light text-dark border me-1 small">{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
-                                <button className="btn btn-sm btn-outline-danger fw-bold" onClick={() => handleOpenReturnModal(ord)}>🔄 Return / Replace</button>
+                                <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
                               {ord.status === 'Delivered' && (
                                 submittedReviews[ord._id] ? (
-                                  <span className="badge bg-warning text-dark fw-bold">⭐ Rated {submittedReviews[ord._id].rating}/5</span>
+                                  <span className="badge bg-warning text-dark fw-bold small">⭐ Rated {submittedReviews[ord._id].rating}/5</span>
                                 ) : (
-                                  <button className="btn btn-sm btn-outline-warning text-dark fw-bold" onClick={() => handleOpenReviewModal(ord)}>⭐ Rate & Review</button>
+                                  <button className="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2 small" onClick={() => handleOpenReviewModal(ord)}>⭐ Review</button>
                                 )
                               )}
                             </div>
@@ -1472,7 +1481,7 @@ function App() {
                   <input type="email" className="form-control" placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} />
                 </div>
                 
-                {/* 🟢 PASSWORD FIELD WITH EYE TOGGLE ICON */}
+                {/* PASSWORD FIELD WITH EYE TOGGLE ICON */}
                 <div className="mb-2 input-group">
                   <input 
                     type={showSignupPassword ? "text" : "password"} 
@@ -1521,7 +1530,7 @@ function App() {
                   <input type="email" className="form-control" placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} />
                 </div>
                 
-                {/* 🟢 PASSWORD FIELD WITH EYE TOGGLE ICON */}
+                {/* PASSWORD FIELD WITH EYE TOGGLE ICON */}
                 <div className="mb-3 input-group">
                   <input 
                     type={showLoginPassword ? "text" : "password"} 
