@@ -34,6 +34,18 @@ function App() {
   const [user, setUser] = useState(null);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
+  // 🟢 WISHLIST & MULTIPLE ADDRESSES STATES
+  const [wishlist, setWishlist] = useState([]);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [newAddressForm, setNewAddressForm] = useState({
+    title: 'Home',
+    name: '',
+    phone: '',
+    address: '',
+    pincode: ''
+  });
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
+
   // PROFILE DRAWER & SUB-MODALS STATES
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -146,7 +158,7 @@ function App() {
     navigationStack
   ]);
 
-  // HELPER TO OPEN PRODUCT DETAILS AND BUILD CLEAN HISTORY STACK
+  // HELPER TO OPEN PRODUCT DETAILS
   const handleOpenProductDetail = (p) => {
     let newStack;
     let newIdx;
@@ -167,7 +179,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // STATIC BUTTON ACTION: ALWAYS DIRECTLY RESET TO ALL PRODUCTS CATALOG
+  // STATIC BUTTON ACTION: ALWAYS RESET TO ALL PRODUCTS CATALOG
   const handleResetToAllCatalog = () => {
     setSelectedProductDetail(null);
     setNavigationStack([]);
@@ -257,6 +269,16 @@ function App() {
     if (savedRev) {
       setSubmittedReviews(JSON.parse(savedRev));
     }
+
+    const savedWish = localStorage.getItem('userWishlist');
+    if (savedWish) {
+      setWishlist(JSON.parse(savedWish));
+    }
+
+    const savedAddrs = localStorage.getItem('userSavedAddresses');
+    if (savedAddrs) {
+      setSavedAddresses(JSON.parse(savedAddrs));
+    }
   }, []);
 
   useEffect(() => {
@@ -295,6 +317,39 @@ function App() {
       });
     }
   }, []);
+
+  // 🟢 WISHLIST TOGGLE HELPER
+  const toggleWishlist = (product) => {
+    let updated;
+    if (wishlist.some(item => item._id === product._id)) {
+      updated = wishlist.filter(item => item._id !== product._id);
+    } else {
+      updated = [...wishlist, product];
+    }
+    setWishlist(updated);
+    localStorage.setItem('userWishlist', JSON.stringify(updated));
+  };
+
+  // 🟢 ADD NEW MULTIPLE SHIPPING ADDRESS HELPER
+  const handleAddNewAddress = (e) => {
+    e.preventDefault();
+    if (!newAddressForm.name || !newAddressForm.address || !newAddressForm.phone) {
+      alert('Please fill all address fields!');
+      return;
+    }
+    const updated = [...savedAddresses, { ...newAddressForm, id: Date.now() }];
+    setSavedAddresses(updated);
+    localStorage.setItem('userSavedAddresses', JSON.stringify(updated));
+    setNewAddressForm({ title: 'Home', name: '', phone: '', address: '', pincode: '' });
+    setShowAddAddressForm(false);
+    alert('✅ New Shipping Address Saved Successfully!');
+  };
+
+  const handleDeleteAddress = (id) => {
+    const updated = savedAddresses.filter(a => a.id !== id);
+    setSavedAddresses(updated);
+    localStorage.setItem('userSavedAddresses', JSON.stringify(updated));
+  };
 
   // TOUCH SWIPE LOGIC FOR BANNER
   const handleTouchStart = (e) => {
@@ -366,7 +421,7 @@ function App() {
     } catch (err) { alert(err.response?.data?.message || 'Login failed.'); }
   };
 
-  // 🟢 UPDATE USER PROFILE IN MONGODB & LOCALSTORAGE
+  // UPDATE USER PROFILE IN MONGODB & LOCALSTORAGE
   const handleUpdateProfileSubmit = async (e) => {
     e.preventDefault();
     if (!user || !user.email) return;
@@ -394,7 +449,7 @@ function App() {
     }
   };
 
-  // 🟢 INSTANT DELETE ACCOUNT FROM MONGODB & LOCALSTORAGE
+  // INSTANT DELETE ACCOUNT FROM MONGODB & LOCALSTORAGE
   const handleDeleteAccount = async () => {
     if (!user || !user.email) return;
 
@@ -410,7 +465,6 @@ function App() {
       handleGoogleLogout();
       setShowAccountSettingsModal(false);
     } catch (err) {
-      // Fallback local cleanup if offline
       alert('🗑️ Account deleted successfully!');
       handleGoogleLogout();
       setShowAccountSettingsModal(false);
@@ -772,7 +826,7 @@ function App() {
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0">
           
-          {/* 🟢 TOP ROW: BRAND LOGO & MENU ONLY (RIGHT SIDE KEPT CLEAN & EMPTY FOR FUTURE HELPDESK/CONTACT) */}
+          {/* TOP ROW: BRAND LOGO & MENU ONLY */}
           <div className="d-flex justify-content-between align-items-center w-100 mb-2">
             <div className="d-flex align-items-center gap-2">
               <button 
@@ -794,11 +848,10 @@ function App() {
               </a>
             </div>
 
-            {/* Right side kept clean for future Help Center / Contact Us */}
             <div id="header-right-slot"></div>
           </div>
 
-          {/* 🟢 MIDDLE ROW: PROFILE BUTTON & CART BUTTON DIRECTLY OPPOSITE TO IT */}
+          {/* MIDDLE ROW: PROFILE BUTTON & CART BUTTON DIRECTLY OPPOSITE TO IT */}
           <div className="d-flex justify-content-between align-items-center w-100 gap-2 mb-2">
             
             {user ? (
@@ -827,7 +880,7 @@ function App() {
               </div>
             )}
 
-            {/* 🟢 CART BUTTON PLACED DIRECTLY OPPOSITE TO PROFILE BUTTON */}
+            {/* CART BUTTON PLACED DIRECTLY OPPOSITE TO PROFILE BUTTON */}
             <button 
               className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
               onClick={() => setShowCartModal(true)}
@@ -856,7 +909,7 @@ function App() {
         </div>
       </nav>
 
-      {/* 🟢 CLICKABLE PROFILE DRAWER MODAL */}
+      {/* CLICKABLE PROFILE DRAWER MODAL */}
       {showProfileDrawer && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1055 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
@@ -953,7 +1006,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 1. EDIT PROFILE MODAL (UPDATES MONGODB & LOCALSTORAGE) */}
+      {/* 1. EDIT PROFILE MODAL */}
       {showEditProfileModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1019,39 +1072,156 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 2. ACCOUNT SETTINGS MODAL (INSTANT MONGODB DELETE ACCOUNT) */}
+      {/* 🟢 2. COMPLETE RE-ORDERED ACCOUNT SETTINGS MODAL */}
       {showAccountSettingsModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 overflow-hidden">
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-gear-fill me-2"></i>Account Settings</h5>
+                <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-gear-fill me-2 text-warning"></i>Account Settings</h5>
                 <button type="button" className="btn-close" onClick={() => setShowAccountSettingsModal(false)}></button>
               </div>
 
-              <div className="p-3 bg-light rounded border mb-4">
-                <h6 className="fw-bold text-dark mb-1">Account Overview</h6>
-                <small className="text-muted d-block">User: {user.name} ({user.email})</small>
-                <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
+              <div className="overflow-auto pe-1" style={{ maxHeight: '70vh' }}>
+                
+                {/* 1. ACCOUNT OVERVIEW */}
+                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                  <h6 className="fw-bold text-dark mb-1 d-flex align-items-center"><i className="bi bi-person-check-fill text-success me-2"></i>Account Overview</h6>
+                  <small className="text-muted d-block">User: {user.name} ({user.email})</small>
+                  <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
+                </div>
+
+                {/* 2. MY SAVED WISHLIST ITEMS */}
+                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center justify-content-between">
+                    <span><i className="bi bi-heart-fill text-danger me-2"></i>My Saved Wishlist</span>
+                    <span className="badge bg-danger rounded-pill">{wishlist.length} Items</span>
+                  </h6>
+
+                  {wishlist.length === 0 ? (
+                    <small className="text-muted d-block py-2">No products saved to wishlist yet. Click the heart ❤️ icon on products to save them here!</small>
+                  ) : (
+                    <div className="row g-2 mt-1">
+                      {wishlist.map((item) => (
+                        <div key={item._id} className="col-12 col-sm-6">
+                          <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border shadow-sm">
+                            <img src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} alt={item.name} className="rounded" width="48" height="48" style={{ objectFit: 'contain' }} />
+                            <div className="flex-grow-1 text-truncate">
+                              <span className="fw-bold small text-dark text-truncate d-block">{item.name}</span>
+                              <span className="text-success fw-bold small">₹{item.price}</span>
+                            </div>
+                            <div className="d-flex gap-1">
+                              <button className="btn btn-sm btn-primary py-0 px-2" style={{ fontSize: '11px' }} onClick={() => addToCart(item)} title="Move to Cart">Add</button>
+                              <button className="btn btn-sm btn-outline-danger py-0 px-1" style={{ fontSize: '11px' }} onClick={() => toggleWishlist(item)} title="Remove">✕</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. AVAILABLE STORE COUPONS */}
+                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center"><i className="bi bi-tag-fill text-warning me-2"></i>Available Live Promo Coupons</h6>
+                  {coupons.length === 0 ? (
+                    <small className="text-muted d-block py-1">No coupons active right now.</small>
+                  ) : (
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      {coupons.map((c, idx) => {
+                        const maxU = Number(c.maxUsage) || 100;
+                        const usedU = Number(c.usedCount) || 0;
+                        const remaining = Math.max(0, maxU - usedU);
+
+                        return (
+                          <div key={c.id || idx} className="p-2 bg-white rounded border border-primary border-opacity-25 d-flex align-items-center gap-2 shadow-sm">
+                            <span className="badge bg-primary fw-bold">🏷️ {c.code}</span>
+                            <small className="fw-bold text-dark">{c.discount}% OFF on [{c.category || 'All'}]</small>
+                            <small className="text-muted">({remaining} left)</small>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. MULTIPLE SAVED SHIPPING ADDRESSES */}
+                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="fw-bold text-dark m-0 d-flex align-items-center"><i className="bi bi-geo-alt-fill text-info me-2"></i>Saved Shipping Addresses</h6>
+                    <button className="btn btn-sm btn-outline-primary fw-bold py-0 px-2" style={{ fontSize: '12px' }} onClick={() => setShowAddAddressForm(!showAddAddressForm)}>
+                      {showAddAddressForm ? 'Cancel' : '+ Add New Address'}
+                    </button>
+                  </div>
+
+                  {/* ADD NEW ADDRESS FORM */}
+                  {showAddAddressForm && (
+                    <form onSubmit={handleAddNewAddress} className="bg-white p-3 rounded border mb-3 shadow-sm">
+                      <h6 className="fw-bold text-primary mb-2 small">Add Shipping Location Details:</h6>
+                      <div className="row g-2 mb-2">
+                        <div className="col-4">
+                          <select className="form-select form-select-sm fw-bold" value={newAddressForm.title} onChange={(e) => setNewAddressForm({...newAddressForm, title: e.target.value})}>
+                            <option value="Home">Home</option>
+                            <option value="Office">Office</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div className="col-8">
+                          <input type="text" className="form-control form-control-sm" placeholder="Full Name" required value={newAddressForm.name} onChange={(e) => setNewAddressForm({...newAddressForm, name: e.target.value})} />
+                        </div>
+                        <div className="col-6">
+                          <input type="tel" className="form-control form-control-sm" placeholder="Phone Number" required value={newAddressForm.phone} onChange={(e) => setNewAddressForm({...newAddressForm, phone: e.target.value})} />
+                        </div>
+                        <div className="col-6">
+                          <input type="text" className="form-control form-control-sm" placeholder="Pincode" required value={newAddressForm.pincode} onChange={(e) => setNewAddressForm({...newAddressForm, pincode: e.target.value})} />
+                        </div>
+                        <div className="col-12">
+                          <textarea className="form-control form-control-sm" rows="2" placeholder="Full House/Street/Area Address" required value={newAddressForm.address} onChange={(e) => setNewAddressForm({...newAddressForm, address: e.target.value})}></textarea>
+                        </div>
+                      </div>
+                      <button type="submit" className="btn btn-sm btn-primary fw-bold w-100 py-1">Save Address Location</button>
+                    </form>
+                  )}
+
+                  {/* SAVED ADDRESSES LIST */}
+                  {savedAddresses.length === 0 ? (
+                    <small className="text-muted d-block py-1">No multiple addresses added yet. Primary default address is used for checkout.</small>
+                  ) : (
+                    <div className="d-flex flex-column gap-2 mt-2">
+                      {savedAddresses.map((addr) => (
+                        <div key={addr.id} className="p-2 bg-white rounded border d-flex justify-content-between align-items-center shadow-sm">
+                          <div>
+                            <span className="badge bg-secondary me-2">{addr.title}</span>
+                            <span className="fw-bold small text-dark me-2">{addr.name} ({addr.phone})</span>
+                            <small className="text-muted d-block">{addr.address} - {addr.pincode}</small>
+                          </div>
+                          <button className="btn btn-sm btn-outline-danger py-0 px-2" style={{ fontSize: '11px' }} onClick={() => handleDeleteAddress(addr.id)}>Delete</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 🟢 5. DANGER ZONE (PERMANENT DELETE ACCOUNT AT BOTTOM) */}
+                <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-2">
+                  <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
+                  <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, saved addresses, and account history from MongoDB.</p>
+                  <button className="btn btn-danger btn-sm fw-bold px-3 py-2 w-100" onClick={handleDeleteAccount}>
+                    🗑️ Delete Account Permanently
+                  </button>
+                </div>
+
               </div>
 
-              <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-4">
-                <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
-                <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, addresses, and account history from MongoDB.</p>
-                <button className="btn btn-danger btn-sm fw-bold px-3 py-2 w-100" onClick={handleDeleteAccount}>
-                  🗑️ Delete Account Permanently
-                </button>
-              </div>
-
-              <div className="d-flex justify-content-end">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAccountSettingsModal(false)}>Close Settings</button>
+              <div className="d-flex justify-content-end pt-3 border-top mt-2">
+                <button type="button" className="btn btn-secondary fw-bold" onClick={() => setShowAccountSettingsModal(false)}>Close Settings</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🟢 3. PRIVACY POLICY MODAL */}
+      {/* 3. PRIVACY POLICY MODAL */}
       {showPrivacyPolicyModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1126,7 +1296,6 @@ function App() {
       {/* PRODUCT DETAIL OR MAIN CATALOG */}
       {selectedProductDetail ? (
         <div className="container py-4">
-          {/* STATIC BUTTON THAT ALWAYS DIRECTLY TAKES USER BACK TO MAIN ALL PRODUCTS CATALOG */}
           <button 
             className="btn btn-outline-dark fw-bold mb-4 rounded-pill px-4 shadow-sm"
             onClick={handleResetToAllCatalog}
@@ -1138,6 +1307,16 @@ function App() {
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
                 <div className="p-3 border rounded-3 bg-white shadow-sm position-relative">
+                  {/* 🟢 WISHLIST HEART BUTTON ON PRODUCT DETAIL */}
+                  <button 
+                    className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
+                    style={{ width: '40px', height: '40px', zIndex: 10 }}
+                    onClick={() => toggleWishlist(selectedProductDetail)}
+                    title="Add/Remove Wishlist"
+                  >
+                    <i className={`bi ${wishlist.some(w => w._id === selectedProductDetail._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
+                  </button>
+
                   <span className="position-absolute top-0 start-0 badge bg-danger m-3 px-3 py-2 fw-bold fs-6 shadow">
                     10% OFF
                   </span>
@@ -1439,10 +1618,22 @@ function App() {
                 <div className="row g-2 g-md-4">
                   {currentProducts.map((p) => {
                     const currentStock = getProductStock(p);
+                    const isWishlisted = wishlist.some(w => w._id === p._id);
                     
                     return (
                       <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                        <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
+                        <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column position-relative">
+                          
+                          {/* 🟢 WISHLIST HEART ICON BUTTON ON CATALOG CARD */}
+                          <button 
+                            className="position-absolute top-0 end-0 m-2 btn btn-light rounded-circle shadow-sm border p-1 d-flex align-items-center justify-content-center"
+                            style={{ width: '32px', height: '32px', zIndex: 5 }}
+                            onClick={() => toggleWishlist(p)}
+                            title="Add/Remove Wishlist"
+                          >
+                            <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
+                          </button>
+
                           <div 
                             className="bg-white text-center p-2 p-md-3" 
                             style={{ height: '150px', cursor: 'pointer' }}
@@ -1509,7 +1700,6 @@ function App() {
                   <div className="d-flex justify-content-center align-items-center mt-4 mb-4">
                     <nav>
                       <ul className="pagination pagination-md shadow-sm m-0">
-                        {/* PREVIOUS BUTTON */}
                         <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
                           <button 
                             className="page-link fw-bold px-3 py-2" 
@@ -1520,7 +1710,6 @@ function App() {
                           </button>
                         </li>
 
-                        {/* ONLY 3 VISIBLE NUMERIC PAGE BUTTONS */}
                         {getVisiblePageNumbers().map((page) => (
                           <li key={page} className="page-item">
                             <button 
@@ -1532,7 +1721,6 @@ function App() {
                           </li>
                         ))}
 
-                        {/* NEXT BUTTON */}
                         <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                           <button 
                             className="page-link fw-bold px-3 py-2" 
@@ -1735,7 +1923,7 @@ function App() {
         </div>
       )}
 
-      {/* CHECKOUT MODAL */}
+      {/* CHECKOUT MODAL WITH SAVED ADDRESS SELECTOR */}
       {showCheckoutModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1745,6 +1933,35 @@ function App() {
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCheckoutModal(false)}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
+                
+                {/* 🟢 QUICK SELECT SAVED ADDRESSES FOR CHECKOUT */}
+                {savedAddresses.length > 0 && (
+                  <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                    <label className="form-label fw-bold small text-primary mb-2">
+                      <i className="bi bi-geo-alt-fill me-1"></i>Select from Saved Shipping Addresses:
+                    </label>
+                    <div className="d-flex flex-wrap gap-2">
+                      {savedAddresses.map((addr) => (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          className="btn btn-sm btn-outline-dark fw-bold text-start p-2 rounded shadow-sm"
+                          style={{ fontSize: '11px', maxWidth: '220px' }}
+                          onClick={() => {
+                            setShippingName(addr.name);
+                            setShippingPhone(addr.phone);
+                            setShippingAddress(`${addr.address} - ${addr.pincode}`);
+                          }}
+                        >
+                          <span className="badge bg-secondary mb-1">{addr.title}</span>
+                          <span className="d-block text-truncate fw-bold">{addr.name} ({addr.phone})</span>
+                          <span className="d-block text-truncate text-muted">{addr.address}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handlePlaceOrder}>
                   <div className="row g-3">
                     <div className="col-md-6">
