@@ -34,7 +34,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
-  // 🟢 WISHLIST & MULTIPLE ADDRESSES STATES
+  // WISHLIST & MULTIPLE ADDRESSES STATES
   const [wishlist, setWishlist] = useState([]);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [newAddressForm, setNewAddressForm] = useState({
@@ -187,9 +187,11 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
+  // 🟢 FETCH COUPONS FILTERED BY TARGETED USER EMAIL
   const fetchCoupons = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/coupons`, { timeout: 10000 });
+      const emailQuery = user && user.email ? `?email=${encodeURIComponent(user.email)}` : '';
+      const res = await axios.get(`${BASE_URL}/api/coupons${emailQuery}`, { timeout: 10000 });
       if (Array.isArray(res.data) && res.data.length > 0) {
         setCoupons(res.data);
       }
@@ -290,7 +292,7 @@ function App() {
       fetchBanners(false);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (heroBanners.length > 0) {
@@ -315,10 +317,26 @@ function App() {
         address: parsed.address || '',
         pincode: parsed.pincode || ''
       });
+      if (parsed.wishlist && Array.isArray(parsed.wishlist)) setWishlist(parsed.wishlist);
+      if (parsed.cart && Array.isArray(parsed.cart)) setCart(parsed.cart);
     }
   }, []);
 
-  // 🟢 WISHLIST TOGGLE HELPER
+  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA TO MONGODB ATLAS
+  const syncUserUserDataToDatabase = async (updatedCart, updatedWishlist) => {
+    if (!user || !user.email) return;
+    try {
+      await axios.put(`${BASE_URL}/api/auth/profile`, {
+        email: user.email,
+        cart: updatedCart !== undefined ? updatedCart : cart,
+        wishlist: updatedWishlist !== undefined ? updatedWishlist : wishlist
+      });
+    } catch (err) {
+      console.log('Background Sync error');
+    }
+  };
+
+  // 🟢 WISHLIST TOGGLE HELPER (WITH MONGODB SYNC)
   const toggleWishlist = (product) => {
     let updated;
     if (wishlist.some(item => item._id === product._id)) {
@@ -328,9 +346,10 @@ function App() {
     }
     setWishlist(updated);
     localStorage.setItem('userWishlist', JSON.stringify(updated));
+    syncUserUserDataToDatabase(undefined, updated);
   };
 
-  // 🟢 ADD NEW MULTIPLE SHIPPING ADDRESS HELPER
+  // ADD NEW MULTIPLE SHIPPING ADDRESS HELPER
   const handleAddNewAddress = (e) => {
     e.preventDefault();
     if (!newAddressForm.name || !newAddressForm.address || !newAddressForm.phone) {
@@ -418,6 +437,7 @@ function App() {
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       setShowLoginModal(false);
       setLoginData({ email: '', password: '' });
+      fetchCoupons();
     } catch (err) { alert(err.response?.data?.message || 'Login failed.'); }
   };
 
@@ -491,6 +511,7 @@ function App() {
       });
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       alert(`🎉 Welcome ${decodedUser.name}! Verified via Google Cloud.`);
+      fetchCoupons();
     } catch (err) {
       console.error("JWT Decode Error:", err);
     }
@@ -550,32 +571,41 @@ function App() {
     return [currentPage - 1, currentPage, currentPage + 1];
   };
 
+  // 🟢 ADD TO CART WITH MONGODB SYNC
   const addToCart = (product) => {
     const prodStock = getProductStock(product);
     if (prodStock <= 0) {
       alert("❌ Sorry, this item is Out of Stock!");
       return;
     }
+    let updatedCart;
     const existing = cart.find(item => item._id === product._id);
     if (existing) {
-      setCart(cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item));
+      updatedCart = cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item);
     } else {
-      setCart([...cart, { ...product, qty: 1 }]);
+      updatedCart = [...cart, { ...product, qty: 1 }];
     }
+    setCart(updatedCart);
+    syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
   const updateCartQty = (id, delta) => {
-    setCart(cart.map(item => {
+    const updatedCart = cart.map(item => {
       if (item._id === id) {
         const newQty = item.qty + delta;
         return newQty > 0 ? { ...item, qty: newQty } : null;
       }
       return item;
-    }).filter(Boolean));
+    }).filter(Boolean);
+    
+    setCart(updatedCart);
+    syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
   const removeFromCart = (id) => {
-    setCart(cart.filter(item => item._id !== id));
+    const updatedCart = cart.filter(item => item._id !== id);
+    setCart(updatedCart);
+    syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
   const rawCartTotal = cart.reduce((acc, curr) => acc + (curr.price * curr.qty), 0);
@@ -694,6 +724,7 @@ function App() {
       fetchLiveOrders();
       fetchProducts(false);
       setCart([]);
+      syncUserUserDataToDatabase([], undefined);
       setAppliedCoupon(null);
       setCouponCode('');
       setCouponCodeMessage('');
@@ -1072,7 +1103,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 2. COMPLETE RE-ORDERED ACCOUNT SETTINGS MODAL */}
+      {/* 2. COMPLETE RE-ORDERED ACCOUNT SETTINGS MODAL */}
       {showAccountSettingsModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1137,6 +1168,7 @@ function App() {
                           <div key={c.id || idx} className="p-2 bg-white rounded border border-primary border-opacity-25 d-flex align-items-center gap-2 shadow-sm">
                             <span className="badge bg-primary fw-bold">🏷️ {c.code}</span>
                             <small className="fw-bold text-dark">{c.discount}% OFF on [{c.category || 'All'}]</small>
+                            {c.targetUserEmail && <span className="badge bg-warning text-dark small">🎁 Special For You</span>}
                             <small className="text-muted">({remaining} left)</small>
                           </div>
                         );
@@ -1202,7 +1234,7 @@ function App() {
                   )}
                 </div>
 
-                {/* 🟢 5. DANGER ZONE (PERMANENT DELETE ACCOUNT AT BOTTOM) */}
+                {/* 5. DANGER ZONE (PERMANENT DELETE ACCOUNT AT BOTTOM) */}
                 <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-2">
                   <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
                   <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, saved addresses, and account history from MongoDB.</p>
@@ -1307,7 +1339,7 @@ function App() {
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
                 <div className="p-3 border rounded-3 bg-white shadow-sm position-relative">
-                  {/* 🟢 WISHLIST HEART BUTTON ON PRODUCT DETAIL */}
+                  {/* WISHLIST HEART BUTTON ON PRODUCT DETAIL */}
                   <button 
                     className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
                     style={{ width: '40px', height: '40px', zIndex: 10 }}
@@ -1624,7 +1656,7 @@ function App() {
                       <div key={p._id} className="col-6 col-md-6 col-lg-4">
                         <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column position-relative">
                           
-                          {/* 🟢 WISHLIST HEART ICON BUTTON ON CATALOG CARD */}
+                          {/* WISHLIST HEART ICON BUTTON ON CATALOG CARD */}
                           <button 
                             className="position-absolute top-0 end-0 m-2 btn btn-light rounded-circle shadow-sm border p-1 d-flex align-items-center justify-content-center"
                             style={{ width: '32px', height: '32px', zIndex: 5 }}
@@ -1934,7 +1966,7 @@ function App() {
               </div>
               <div className="modal-body p-3 p-md-4">
                 
-                {/* 🟢 QUICK SELECT SAVED ADDRESSES FOR CHECKOUT */}
+                {/* QUICK SELECT SAVED ADDRESSES FOR CHECKOUT */}
                 {savedAddresses.length > 0 && (
                   <div className="p-3 bg-light rounded border mb-4 shadow-sm">
                     <label className="form-label fw-bold small text-primary mb-2">
