@@ -68,43 +68,18 @@ function App() {
   const [returnReason, setReturnReason] = useState('Damaged or Defective Item');
   const [returnComments, setReturnComments] = useState('');
 
-  // DOUBLE BACK TO EXIT STATE & REFS
-  const [showExitToast, setShowExitToast] = useState(false);
-
   // Touch Swipe Refs for Hero Banner
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // Default Fallback Banners
-  const defaultBanners = [
-    {
-      id: '1',
-      title: "🔥 Tech Mega Sale is LIVE!",
-      subtitle: "Get up to 20% OFF on all premium electronics.",
-      badge: "USE CODE: TECH10",
-      bg: "linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)",
-      img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"
-    },
-    {
-      id: '2',
-      title: "⚡ Summer Fashion & Accessories Collection",
-      subtitle: "Upgrade your style with top picks & instant discounts.",
-      badge: "USE CODE: SUMMER20",
-      bg: "linear-gradient(135deg, #198754 0%, #146c43 100%)",
-      img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800"
-    }
-  ];
-
-  const [heroBanners, setHeroBanners] = useState(defaultBanners);
+  // 🟢 MONGODB DYNAMIC BANNERS STATE (NO HARDCODED DEFAULT FAKE BANNERS)
+  const [heroBanners, setHeroBanners] = useState([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const [allStoreOrders, setAllStoreOrders] = useState([]);
 
-  const [coupons, setCoupons] = useState([
-    { id: '1', code: 'TECH10', discount: 10, category: 'Electronics', maxUsage: 50, usedCount: 0 },
-    { id: '2', code: 'SUMMER20', discount: 20, category: 'Fashion', maxUsage: 25, usedCount: 0 },
-    { id: '3', code: 'NV7GOAT', discount: 30, category: 'All', maxUsage: 10, usedCount: 0 }
-  ]);
+  const [coupons, setCoupons] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponMessage, setCouponCodeMessage] = useState('');
@@ -117,7 +92,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
+  // 🟢 SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH AUTO-SCROLL TO TOP
   useEffect(() => {
     const handlePopState = (event) => {
       // 1. Close Modals first if open
@@ -141,7 +116,7 @@ function App() {
         }
       }
 
-      // Reset to main catalog when stack ends
+      // Reset to main catalog when history stack ends
       setSelectedProductDetail(null);
       setCurrentIndex(-1);
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
@@ -155,7 +130,7 @@ function App() {
     navigationStack
   ]);
 
-  // 🟢 HELPER TO OPEN PRODUCT DETAILS AND BUILD CLEAN HISTORY STACK
+  // 🟢 HELPER TO OPEN PRODUCT DETAILS AND BUILD CLEAN HISTORY STACK WITH AUTO TOP-SCROLL
   const handleOpenProductDetail = (p) => {
     let newStack;
     let newIdx;
@@ -224,17 +199,22 @@ function App() {
     }
   };
 
+  // 🟢 FETCH BANNERS DIRECTLY FROM MONGODB (NO FAKE DEFAULTS)
   const fetchBanners = async () => {
     try {
+      setBannersLoading(true);
       const res = await axios.get(`${BASE_URL}/api/banners`, { timeout: 10000 });
       if (res.data && res.data.length > 0) {
         const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
-        if (cleanBanners.length > 0) {
-          setHeroBanners(cleanBanners);
-        }
+        setHeroBanners(cleanBanners);
+      } else {
+        setHeroBanners([]);
       }
     } catch (err) {
       console.error('Error fetching banners:', err);
+      setHeroBanners([]);
+    } finally {
+      setBannersLoading(false);
     }
   };
 
@@ -253,19 +233,15 @@ function App() {
 
   useEffect(() => {
     fetchProducts(true);
-    const timer = setTimeout(() => {
-      fetchBanners();
-      fetchLiveOrders();
-      fetchReviews();
-      fetchCoupons();
-    }, 1500);
+    fetchBanners();
+    fetchLiveOrders();
+    fetchReviews();
+    fetchCoupons();
 
     const savedRev = localStorage.getItem('submittedReviews');
     if (savedRev) {
       setSubmittedReviews(JSON.parse(savedRev));
     }
-
-    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -274,6 +250,7 @@ function App() {
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
+      fetchBanners();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -306,7 +283,7 @@ function App() {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
+    if (!touchStartX.current || !touchEndX.current || heroBanners.length <= 1) return;
     const distance = touchStartX.current - touchEndX.current;
     const isLeftSwipe = distance > 40;
     const isRightSwipe = distance < -40;
@@ -691,21 +668,11 @@ function App() {
     return 1;
   };
 
-  const currentBanner = heroBanners[currentSlide] || heroBanners[0];
+  const currentBanner = heroBanners[currentSlide] || null;
 
   return (
     <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
       
-      {/* FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS */}
-      {showExitToast && (
-        <div 
-          className="position-fixed bottom-0 start-50 translate-middle-x mb-5 bg-dark text-warning px-4 py-2 rounded-pill shadow-lg text-center fw-bold small"
-          style={{ zIndex: 9999, border: '2px solid #ffc107' }}
-        >
-          📱 Press back again to exit TechStore
-        </div>
-      )}
-
       {/* NAVBAR */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0">
@@ -1046,9 +1013,17 @@ function App() {
         </div>
       ) : (
         <>
-          {currentBanner && (
-            <div className="container mt-3 mb-2 px-2 px-md-3">
-              {/* SWIPEABLE HERO BANNER WITH INFINITE LOOP */}
+          {/* 🟢 DYNAMIC MONGODB BANNERS WITH CLEAN LOADING PLACEHOLDER */}
+          <div className="container mt-3 mb-2 px-2 px-md-3">
+            {bannersLoading ? (
+              <div 
+                className="rounded-4 p-4 text-center bg-secondary bg-opacity-10 shadow-sm d-flex align-items-center justify-content-center"
+                style={{ minHeight: '160px' }}
+              >
+                <div className="spinner-border text-warning spinner-border-sm me-2" role="status"></div>
+                <span className="text-muted fw-bold small">Loading store offers...</span>
+              </div>
+            ) : heroBanners.length > 0 && currentBanner ? (
               <div 
                 className="rounded-4 p-3 p-md-4 text-white shadow-lg overflow-hidden position-relative"
                 style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px', touchAction: 'pan-y' }}
@@ -1058,20 +1033,26 @@ function App() {
               >
                 <div className="row align-items-center">
                   <div className="col-md-8">
-                    <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small">
-                      {currentBanner.badge || 'SPECIAL OFFER'}
-                    </span>
+                    {currentBanner.badge && (
+                      <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small">
+                        {currentBanner.badge}
+                      </span>
+                    )}
                     <h2 className="fw-bold m-0 fs-4 fs-md-2">{currentBanner.title}</h2>
-                    <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block">{currentBanner.subtitle}</p>
+                    {currentBanner.subtitle && (
+                      <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block">{currentBanner.subtitle}</p>
+                    )}
                   </div>
-                  <div className="col-md-4 text-end d-none d-md-block">
-                    <img 
-                      src={currentBanner.img} 
-                      alt="Offer" 
-                      className="img-fluid rounded-3 shadow" 
-                      style={{ maxHeight: '130px', objectFit: 'cover' }}
-                    />
-                  </div>
+                  {currentBanner.img && (
+                    <div className="col-md-4 text-end d-none d-md-block">
+                      <img 
+                        src={currentBanner.img} 
+                        alt="Offer" 
+                        className="img-fluid rounded-3 shadow" 
+                        style={{ maxHeight: '130px', objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {heroBanners.length > 1 && (
@@ -1087,8 +1068,8 @@ function App() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
 
           <div className="container py-2 px-2 px-md-3 mb-4">
             <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
