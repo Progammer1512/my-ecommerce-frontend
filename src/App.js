@@ -65,6 +65,10 @@ function App() {
   const [returnReason, setReturnReason] = useState('Damaged or Defective Item');
   const [returnComments, setReturnComments] = useState('');
 
+  // 🟢 DOUBLE BACK TO EXIT STATE & REFS
+  const [showExitToast, setShowExitToast] = useState(false);
+  const lastBackPressTime = useRef(0);
+
   // Touch Swipe Refs for Hero Banner
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -111,19 +115,32 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 16;
 
-  // 🟢 SMART MOBILE BACK BUTTON HANDLING (PREVENTS BLANK SCREEN ON BACK)
+  // 🟢 SMART DOUBLE BACK BUTTON EXIT LOGIC
   useEffect(() => {
     const handlePopState = (e) => {
-      // If any modal or detail page is active, close it instead of exiting the page
-      if (showCartModal) { setShowCartModal(false); return; }
-      if (showCheckoutModal) { setShowCheckoutModal(false); return; }
-      if (showCategoryMenu) { setShowCategoryMenu(false); return; }
-      if (showOrderTracking) { setShowOrderTracking(false); return; }
-      if (showSignupModal) { setShowSignupModal(false); return; }
-      if (showLoginModal) { setShowLoginModal(false); return; }
-      if (showReviewModal) { setShowReviewModal(false); return; }
-      if (showReturnModal) { setShowReviewModalReturn(false); return; }
-      if (selectedProductDetail) { setSelectedProductDetail(null); return; }
+      // Step 1: If any Modal or Detail View is open, close it first
+      if (showCartModal) { setShowCartModal(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showCheckoutModal) { setShowCheckoutModal(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showCategoryMenu) { setShowCategoryMenu(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showOrderTracking) { setShowOrderTracking(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showSignupModal) { setShowSignupModal(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showLoginModal) { setShowLoginModal(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showReviewModal) { setShowReviewModal(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (showReturnModal) { setShowReviewModalReturn(false); window.history.pushState(null, null, window.location.pathname); return; }
+      if (selectedProductDetail) { setSelectedProductDetail(null); window.history.pushState(null, null, window.location.pathname); return; }
+
+      // Step 2: User is on the Main Home Page -> Check double press within 2 seconds
+      const now = Date.now();
+      if (now - lastBackPressTime.current < 2000) {
+        // Double pressed -> Allow browser/app exit
+        window.history.back();
+      } else {
+        // First press -> Show exit toast and push state to prevent immediate exit
+        lastBackPressTime.current = now;
+        setShowExitToast(true);
+        setTimeout(() => setShowExitToast(false), 2000);
+        window.history.pushState(null, null, window.location.pathname);
+      }
     };
 
     window.history.pushState(null, null, window.location.pathname);
@@ -249,7 +266,7 @@ function App() {
     }
   }, []);
 
-  // 🟢 TOUCH SWIPE LOGIC FOR BANNER (INFINITE LOOP RIGHT-TO-LEFT & LEFT-TO-RIGHT)
+  // TOUCH SWIPE LOGIC FOR BANNER (INFINITE LOOP)
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -265,11 +282,9 @@ function App() {
     const isRightSwipe = distance < -40;
 
     if (isLeftSwipe) {
-      // Right to Left Swipe -> Next Slide (Infinite Loop Back to 1st Banner)
       setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
     }
     if (isRightSwipe) {
-      // Left to Right Swipe -> Previous Slide (Infinite Loop Back to Last Banner)
       setCurrentSlide((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
     }
 
@@ -656,6 +671,16 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
       
+      {/* 🟢 FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS */}
+      {showExitToast && (
+        <div 
+          className="position-fixed bottom-0 start-50 translate-middle-x mb-5 bg-dark text-white px-3 py-2 rounded-pill shadow-lg z-3 text-center fw-bold small"
+          style={{ animation: 'fadeIn 0.3s ease-in-out' }}
+        >
+          📱 Press back again to exit TechStore
+        </div>
+      )}
+
       {/* NAVBAR */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0">
@@ -997,7 +1022,7 @@ function App() {
         <>
           {currentBanner && (
             <div className="container mt-3 mb-2 px-2 px-md-3">
-              {/* 🟢 SWIPEABLE HERO BANNER WITH INFINITE LOOP */}
+              {/* SWIPEABLE HERO BANNER WITH INFINITE LOOP */}
               <div 
                 className="rounded-4 p-3 p-md-4 text-white shadow-lg overflow-hidden position-relative"
                 style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px', touchAction: 'pan-y' }}
