@@ -72,7 +72,7 @@ function App() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // 🟢 MONGODB REAL BANNERS STATE (NO FAKE HARDCODED DEFAULT BANNERS)
+  // MONGODB REAL BANNERS STATE
   const [heroBanners, setHeroBanners] = useState([]);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -92,7 +92,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH AUTO-SCROLL TO TOP
+  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
   useEffect(() => {
     const handlePopState = (event) => {
       if (showCartModal) { setShowCartModal(false); return; }
@@ -196,7 +196,7 @@ function App() {
     }
   };
 
-  // FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER ON BACKGROUND AUTO-REFRESH
+  // FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER
   const fetchBanners = async (isInitial = false) => {
     try {
       if (isInitial) setBannersLoading(true);
@@ -1009,7 +1009,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* 🟢 DYNAMIC MONGODB BANNERS WITH BLURRED IMAGE BACKDROP & MOBILE VISIBILITY */}
+          {/* 🟢 DYNAMIC MONGODB BANNERS WITH FIXED TOP-LEFT TEXT ALIGNMENT & BLURRED BACKDROP */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
@@ -1031,7 +1031,7 @@ function App() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                {/* 🟢 DYNAMIC BLURRED IMAGE SHADOW BACKGROUND */}
+                {/* DYNAMIC BLURRED IMAGE SHADOW BACKGROUND */}
                 {currentBanner.img && (
                   <div 
                     className="position-absolute top-0 start-0 w-100 h-100"
@@ -1046,22 +1046,25 @@ function App() {
                   />
                 )}
 
-                <div className="row align-items-center position-relative z-1 g-3">
-                  <div className="col-7 col-md-8">
-                    {currentBanner.badge && (
-                      <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small shadow-sm">
+                {/* 🟢 FIXED ALIGN-ITEMS-START TO LOCK TEXT TO TOP-LEFT CORNER */}
+                <div className="row align-items-start position-relative z-1 g-3">
+                  <div className="col-7 col-md-8 d-flex flex-column align-items-start justify-content-start text-start" style={{ minHeight: '110px' }}>
+                    {currentBanner.badge ? (
+                      <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small shadow-sm d-inline-block text-truncate" style={{ maxWidth: '100%' }}>
                         {currentBanner.badge}
                       </span>
-                    )}
-                    <h2 className="fw-bold m-0 fs-5 fs-md-2 text-shadow">{currentBanner.title}</h2>
+                    ) : <div style={{ height: '24px' }}></div>}
+                    
+                    <h2 className="fw-bold m-0 fs-5 fs-md-2 text-shadow text-truncate w-100">{currentBanner.title}</h2>
+                    
                     {currentBanner.subtitle && (
-                      <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block">{currentBanner.subtitle}</p>
+                      <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block text-truncate w-100">{currentBanner.subtitle}</p>
                     )}
                   </div>
 
-                  {/* 🟢 ALWAYS VISIBLE ON MOBILE & DESKTOP BROWSERS */}
+                  {/* ALWAYS VISIBLE IMAGE ON MOBILE & DESKTOP BROWSERS */}
                   {currentBanner.img && (
-                    <div className="col-5 col-md-4 text-end">
+                    <div className="col-5 col-md-4 text-end align-self-center">
                       <img 
                         src={currentBanner.img} 
                         alt="Offer" 
