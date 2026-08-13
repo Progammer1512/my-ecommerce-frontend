@@ -115,35 +115,42 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 16;
 
-  // 🟢 SMART DOUBLE BACK BUTTON EXIT LOGIC
+  // 🟢 MOBILE HARDWARE / SWIPE BACK BUTTON GUARD & DOUBLE BACK TO EXIT LOGIC
   useEffect(() => {
-    const handlePopState = (e) => {
-      // Step 1: If any Modal or Detail View is open, close it first
-      if (showCartModal) { setShowCartModal(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showCheckoutModal) { setShowCheckoutModal(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showCategoryMenu) { setShowCategoryMenu(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showOrderTracking) { setShowOrderTracking(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showSignupModal) { setShowSignupModal(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showLoginModal) { setShowLoginModal(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showReviewModal) { setShowReviewModal(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (showReturnModal) { setShowReviewModalReturn(false); window.history.pushState(null, null, window.location.pathname); return; }
-      if (selectedProductDetail) { setSelectedProductDetail(null); window.history.pushState(null, null, window.location.pathname); return; }
+    // Keep pushing dummy state to create a safety net for mobile back button
+    const pushGuardState = () => {
+      window.history.pushState({ pageGuard: true }, '', window.location.href);
+    };
 
-      // Step 2: User is on the Main Home Page -> Check double press within 2 seconds
+    pushGuardState();
+
+    const handlePopState = (event) => {
+      // 1. If any Modal or Product Detail view is open, close it & keep user on app
+      if (showCartModal) { setShowCartModal(false); pushGuardState(); return; }
+      if (showCheckoutModal) { setShowCheckoutModal(false); pushGuardState(); return; }
+      if (showCategoryMenu) { setShowCategoryMenu(false); pushGuardState(); return; }
+      if (showOrderTracking) { setShowOrderTracking(false); pushGuardState(); return; }
+      if (showSignupModal) { setShowSignupModal(false); pushGuardState(); return; }
+      if (showLoginModal) { setShowLoginModal(false); pushGuardState(); return; }
+      if (showReviewModal) { setShowReviewModal(false); pushGuardState(); return; }
+      if (showReturnModal) { setShowReviewModalReturn(false); pushGuardState(); return; }
+      if (selectedProductDetail) { setSelectedProductDetail(null); pushGuardState(); return; }
+
+      // 2. User is on Main Home Catalog
       const now = Date.now();
       if (now - lastBackPressTime.current < 2000) {
-        // Double pressed -> Allow browser/app exit
+        // Double pressed within 2 seconds -> Allow exit by unbinding and triggering back
+        window.removeEventListener('popstate', handlePopState);
         window.history.back();
       } else {
-        // First press -> Show exit toast and push state to prevent immediate exit
+        // First press -> Show toast message and push guard state back immediately
         lastBackPressTime.current = now;
         setShowExitToast(true);
-        setTimeout(() => setShowExitToast(false), 2000);
-        window.history.pushState(null, null, window.location.pathname);
+        setTimeout(() => setShowExitToast(false), 2200);
+        pushGuardState();
       }
     };
 
-    window.history.pushState(null, null, window.location.pathname);
     window.addEventListener('popstate', handlePopState);
 
     return () => {
@@ -671,11 +678,11 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
       
-      {/* 🟢 FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS */}
+      {/* 🟢 FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS (HIGH Z-INDEX) */}
       {showExitToast && (
         <div 
-          className="position-fixed bottom-0 start-50 translate-middle-x mb-5 bg-dark text-white px-3 py-2 rounded-pill shadow-lg z-3 text-center fw-bold small"
-          style={{ animation: 'fadeIn 0.3s ease-in-out' }}
+          className="position-fixed bottom-0 start-50 translate-middle-x mb-5 bg-dark text-white px-4 py-2 rounded-pill shadow-lg text-center fw-bold small"
+          style={{ zIndex: 9999, animation: 'fadeIn 0.3s ease-in-out', border: '1px solid #ffc107' }}
         >
           📱 Press back again to exit TechStore
         </div>
