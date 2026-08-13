@@ -34,6 +34,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
+  // 🟢 NEW PROFILE MENU DRAWER MODAL STATE
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+
   // CATEGORY MENU MODAL STATE
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
 
@@ -103,6 +106,7 @@ function App() {
       if (showLoginModal) { setShowLoginModal(false); return; }
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
+      if (showProfileDrawer) { setShowProfileDrawer(false); return; }
 
       if (event.state && typeof event.state.stackIdx === 'number') {
         const targetIdx = event.state.stackIdx;
@@ -123,7 +127,7 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [
     showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
-    showSignupModal, showLoginModal, showReviewModal, showReturnModal,
+    showSignupModal, showLoginModal, showReviewModal, showReturnModal, showProfileDrawer,
     navigationStack
   ]);
 
@@ -196,7 +200,7 @@ function App() {
     }
   };
 
-  // FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER
+  // FETCH BANNERS FROM MONGODB
   const fetchBanners = async (isInitial = false) => {
     try {
       if (isInitial) setBannersLoading(true);
@@ -269,7 +273,7 @@ function App() {
     }
   }, []);
 
-  // TOUCH SWIPE LOGIC FOR BANNER (INFINITE LOOP)
+  // TOUCH SWIPE LOGIC FOR BANNER
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -353,6 +357,7 @@ function App() {
   const handleGoogleLogout = () => {
     googleLogout();
     setUser(null);
+    setShowProfileDrawer(false);
     localStorage.removeItem('googleUser');
     alert("Logged out from Account.");
   };
@@ -709,33 +714,32 @@ function App() {
             </button>
           </div>
 
-          {/* Middle Row: User Controls & Authentication Actions */}
-          <div className="d-flex flex-wrap justify-content-between align-items-center w-100 gap-2 mb-2">
+          {/* Middle Row: Clean User Profile Pill or Login/Signup Actions */}
+          <div className="d-flex justify-content-between align-items-center w-100 gap-2 mb-2">
             
-            <button 
-              className="btn btn-outline-light btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" 
-              onClick={() => { fetchLiveOrders(); setShowOrderTracking(true); }}
-            >
-              <i className="bi bi-bag-check fs-6"></i>
-              <span>My Orders</span>
-              {userOrders.length > 0 && (
-                <span className="badge rounded-pill bg-primary ms-1">
-                  {userOrders.length}
-                </span>
-              )}
-            </button>
-
             {user ? (
-              <div className="d-flex align-items-center gap-2 text-white bg-secondary bg-opacity-25 px-2 py-1 rounded-pill">
-                <img src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt="Profile" className="rounded-circle border" width="28" height="28" />
-                <span className="fw-bold small text-truncate" style={{ maxWidth: '90px' }}>{user.name}</span>
-                <button className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill fw-bold" onClick={handleGoogleLogout}>Logout</button>
-              </div>
+              <button 
+                className="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
+                onClick={() => setShowProfileDrawer(true)}
+                title="Open Profile Menu"
+              >
+                <img 
+                  src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
+                  alt="Profile" 
+                  className="rounded-circle border border-warning" 
+                  width="26" 
+                  height="26" 
+                />
+                <span className="fw-bold small text-truncate" style={{ maxWidth: '140px' }}>{user.name}</span>
+                <i className="bi bi-chevron-down small text-warning ms-1"></i>
+              </button>
             ) : (
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                
+              <div className="d-flex align-items-center gap-2 flex-wrap w-100 justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                  <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
+                </div>
+
                 <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
@@ -763,6 +767,92 @@ function App() {
 
         </div>
       </nav>
+
+      {/* 🟢 CLICKABLE PROFILE DRAWER MODAL */}
+      {showProfileDrawer && user && (
+        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered modal-sm">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              
+              {/* Header with User Info */}
+              <div className="modal-header bg-dark text-white d-flex align-items-center gap-3 p-3">
+                <img 
+                  src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
+                  alt="Avatar" 
+                  className="rounded-circle border border-warning shadow-sm" 
+                  width="48" 
+                  height="48" 
+                />
+                <div className="text-truncate">
+                  <h6 className="fw-bold text-warning mb-0 text-truncate">{user.name}</h6>
+                  <small className="text-white-50 d-block text-truncate" style={{ fontSize: '11px' }}>{user.email}</small>
+                </div>
+                <button type="button" className="btn-close btn-close-white ms-auto" onClick={() => setShowProfileDrawer(false)}></button>
+              </div>
+
+              {/* Drawer Menu List */}
+              <div className="modal-body p-2 bg-light d-flex flex-column gap-2">
+                
+                <button 
+                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  onClick={() => {
+                    alert(`👤 Account Details:\nName: ${user.name}\nEmail: ${user.email}`);
+                  }}
+                >
+                  <span><i className="bi bi-person-circle text-warning me-2 fs-5"></i>My Profile</span>
+                  <i className="bi bi-chevron-right text-muted small"></i>
+                </button>
+
+                <button 
+                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  onClick={() => {
+                    setShowProfileDrawer(false);
+                    fetchLiveOrders();
+                    setShowOrderTracking(true);
+                  }}
+                >
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-box-seam text-primary me-2 fs-5"></i>
+                    <span>My Orders</span>
+                  </div>
+                  {userOrders.length > 0 ? (
+                    <span className="badge bg-primary rounded-pill">{userOrders.length}</span>
+                  ) : <i className="bi bi-chevron-right text-muted small"></i>}
+                </button>
+
+                <button 
+                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  onClick={() => alert("⚙️ Account Settings: Manage address & contact info.")}
+                >
+                  <span><i className="bi bi-gear-fill text-secondary me-2 fs-5"></i>Account Settings</span>
+                  <i className="bi bi-chevron-right text-muted small"></i>
+                </button>
+
+                <button 
+                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  onClick={() => alert("📜 Privacy Policy & Store Terms: 100% Safe & Secure Transactions.")}
+                >
+                  <span><i className="bi bi-shield-lock-fill text-info me-2 fs-5"></i>Privacy Policy</span>
+                  <i className="bi bi-chevron-right text-muted small"></i>
+                </button>
+
+              </div>
+
+              {/* Bottom Logout Action */}
+              <div className="modal-footer bg-light border-top p-2">
+                <button 
+                  className="btn btn-danger w-100 fw-bold py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                  onClick={handleGoogleLogout}
+                >
+                  <i className="bi bi-box-arrow-right fs-5"></i>
+                  <span>Log Out Account</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🍔 CATEGORY HAMBURGER MENU MODAL */}
       {showCategoryMenu && (
@@ -1009,7 +1099,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* 🟢 DYNAMIC MONGODB BANNERS WITH FIXED TOP-LEFT TEXT ALIGNMENT & BLURRED BACKDROP */}
+          {/* DYNAMIC MONGODB BANNERS WITH FIXED TOP-LEFT TEXT ALIGNMENT & BLURRED BACKDROP */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
@@ -1046,7 +1136,7 @@ function App() {
                   />
                 )}
 
-                {/* 🟢 FIXED ALIGN-ITEMS-START TO LOCK TEXT TO TOP-LEFT CORNER */}
+                {/* FIXED ALIGN-ITEMS-START TO LOCK TEXT TO TOP-LEFT CORNER */}
                 <div className="row align-items-start position-relative z-1 g-3">
                   <div className="col-7 col-md-8 d-flex flex-column align-items-start justify-content-start text-start" style={{ minHeight: '110px' }}>
                     {currentBanner.badge ? (
