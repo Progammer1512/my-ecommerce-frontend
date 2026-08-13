@@ -47,8 +47,9 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // FULL-PAGE PRODUCT DETAIL STATE
+  // FULL-PAGE PRODUCT DETAIL STATE & HISTORY STACK FOR MULTI-LEVEL PRODUCT NAVIGATION
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
+  const [productHistory, setProductHistory] = useState([]);
   const [allReviews, setAllReviews] = useState([]);
 
   // Review & Rating Modal State
@@ -107,59 +108,72 @@ function App() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponMessage, setCouponCodeMessage] = useState('');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 16;
+
   const [shippingName, setShippingName] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 16;
-
-  // 🟢 MOBILE BROWSER DOUBLE BACK TO EXIT FIX (PREVENTS IMMEDIATE GOOGLE REDIRECT)
+  // 🟢 SMART MULTI-LEVEL PRODUCT NAVIGATION & BACK BUTTON HANDLER
   useEffect(() => {
-    const pushDoubleGuard = () => {
-      window.history.pushState({ guard: 1 }, '', window.location.href);
-      window.history.pushState({ guard: 2 }, '', window.location.href);
-    };
+    const handlePopState = () => {
+      // 1. Close Modals first if any are open
+      if (showCartModal) { setShowCartModal(false); return; }
+      if (showCheckoutModal) { setShowCheckoutModal(false); return; }
+      if (showCategoryMenu) { setShowCategoryMenu(false); return; }
+      if (showOrderTracking) { setShowOrderTracking(false); return; }
+      if (showSignupModal) { setShowSignupModal(false); return; }
+      if (showLoginModal) { setShowLoginModal(false); return; }
+      if (showReviewModal) { setShowReviewModal(false); return; }
+      if (showReturnModal) { setShowReviewModalReturn(false); return; }
 
-    pushDoubleGuard();
-
-    const handlePopState = (event) => {
-      // Step 1: If any modal or product detail is open, close it & refresh guard
-      if (showCartModal) { setShowCartModal(false); pushDoubleGuard(); return; }
-      if (showCheckoutModal) { setShowCheckoutModal(false); pushDoubleGuard(); return; }
-      if (showCategoryMenu) { setShowCategoryMenu(false); pushDoubleGuard(); return; }
-      if (showOrderTracking) { setShowOrderTracking(false); pushDoubleGuard(); return; }
-      if (showSignupModal) { setShowSignupModal(false); pushDoubleGuard(); return; }
-      if (showLoginModal) { setShowLoginModal(false); pushDoubleGuard(); return; }
-      if (showReviewModal) { setShowReviewModal(false); pushDoubleGuard(); return; }
-      if (showReturnModal) { setShowReviewModalReturn(false); pushDoubleGuard(); return; }
-      if (selectedProductDetail) { setSelectedProductDetail(null); pushDoubleGuard(); return; }
-
-      // Step 2: Main Home Page Logic
-      const now = Date.now();
-      if (now - lastBackPressTime.current < 2500) {
-        // Second press within 2.5s -> Allow exit
-        window.removeEventListener('popstate', handlePopState);
-        window.history.go(-2);
-      } else {
-        // First press -> Show notification & lock page
-        lastBackPressTime.current = now;
-        setShowExitToast(true);
-        setTimeout(() => setShowExitToast(false), 2500);
-        pushDoubleGuard();
+      // 2. If in Product Detail View, pop back to Previous Product in History Stack
+      if (selectedProductDetail) {
+        if (productHistory.length > 0) {
+          const previousProduct = productHistory[productHistory.length - 1];
+          setProductHistory(prev => prev.slice(0, prev.length - 1));
+          setSelectedProductDetail(previousProduct);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          // If no previous product in history stack, go back to main catalog
+          setSelectedProductDetail(null);
+        }
+        return;
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [
     showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
-    showSignupModal, showLoginModal, showReviewModal, showReturnModal, selectedProductDetail
+    showSignupModal, showLoginModal, showReviewModal, showReturnModal,
+    selectedProductDetail, productHistory
   ]);
+
+  // 🟢 HELPER TO OPEN PRODUCT DETAILS WITH HISTORY STACK PRESERVATION
+  const handleOpenProductDetail = (p) => {
+    if (selectedProductDetail && selectedProductDetail._id !== p._id) {
+      setProductHistory(prev => [...prev, selectedProductDetail]);
+    }
+    setSelectedProductDetail(p);
+    window.history.pushState({ productPage: true }, '', window.location.href);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // HELPER TO MANUALLY CLICK BACK BUTTON ON UI
+  const handleManualBackFromProduct = () => {
+    if (productHistory.length > 0) {
+      const previousProduct = productHistory[productHistory.length - 1];
+      setProductHistory(prev => prev.slice(0, prev.length - 1));
+      setSelectedProductDetail(previousProduct);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setSelectedProductDetail(null);
+      setProductHistory([]);
+    }
+  };
 
   const fetchCoupons = async () => {
     try {
@@ -619,11 +633,6 @@ function App() {
     setShowReviewModalReturn(false);
   };
 
-  const handleOpenProductDetail = (p) => {
-    setSelectedProductDetail(p);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleNavigateToProduct = (item) => {
     setShowOrderTracking(false);
     const matchingProd = products.find(p => p._id === item.product || p._id === item._id || p.name === item.name);
@@ -678,7 +687,7 @@ function App() {
   return (
     <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
       
-      {/* 🟢 FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS (MOBILE & DESKTOP SAFE) */}
+      {/* FLOATING TOAST NOTIFICATION ON FIRST BACK PRESS */}
       {showExitToast && (
         <div 
           className="position-fixed bottom-0 start-50 translate-middle-x mb-5 bg-dark text-warning px-4 py-2 rounded-pill shadow-lg text-center fw-bold small"
@@ -709,7 +718,7 @@ function App() {
               <a 
                 className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
                 href="#home"
-                onClick={() => setSelectedProductDetail(null)}
+                onClick={() => { setSelectedProductDetail(null); setProductHistory([]); }}
               >
                 <i className="bi bi-shop me-1"></i>TechStore
               </a>
@@ -776,7 +785,7 @@ function App() {
               className="form-control form-control-sm rounded-pill px-3 shadow-sm" 
               placeholder="Search products..." 
               value={searchTerm} 
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); }} 
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); setProductHistory([]); }} 
             />
           </div>
 
@@ -808,6 +817,7 @@ function App() {
                         setSelectedCategory(cat);
                         setCurrentPage(1);
                         setSelectedProductDetail(null);
+                        setProductHistory([]);
                         setShowCategoryMenu(false);
                       }}
                     >
@@ -827,9 +837,9 @@ function App() {
         <div className="container py-4">
           <button 
             className="btn btn-outline-dark fw-bold mb-4 rounded-pill px-4"
-            onClick={() => setSelectedProductDetail(null)}
+            onClick={handleManualBackFromProduct}
           >
-            &larr; Back to All Products Catalog
+            &larr; {productHistory.length > 0 ? 'Back to Previous Product' : 'Back to All Products Catalog'}
           </button>
 
           <div className="card border-0 shadow-lg p-3 p-md-4 bg-white rounded-4 mb-5">
@@ -1225,7 +1235,7 @@ function App() {
             <div className="col-md-4">
               <h6 className="fw-bold text-white mb-2">Quick Navigation</h6>
               <ul className="list-unstyled small text-white-50 m-0 d-flex flex-column gap-1">
-                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => setSelectedProductDetail(null)}>Home Catalog</a></li>
+                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => { setSelectedProductDetail(null); setProductHistory([]); }}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
               </ul>
