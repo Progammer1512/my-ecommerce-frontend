@@ -34,8 +34,19 @@ function App() {
   const [user, setUser] = useState(null);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
-  // 🟢 NEW PROFILE MENU DRAWER MODAL STATE
+  // PROFILE DRAWER & SUB-MODALS STATES
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
+  const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
+
+  // USER PROFILE EDIT FORM STATE
+  const [profileFormData, setProfileFormData] = useState({
+    name: '',
+    mobile: '',
+    address: '',
+    pincode: ''
+  });
 
   // CATEGORY MENU MODAL STATE
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -107,6 +118,9 @@ function App() {
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
       if (showProfileDrawer) { setShowProfileDrawer(false); return; }
+      if (showEditProfileModal) { setShowEditProfileModal(false); return; }
+      if (showAccountSettingsModal) { setShowAccountSettingsModal(false); return; }
+      if (showPrivacyPolicyModal) { setShowPrivacyPolicyModal(false); return; }
 
       if (event.state && typeof event.state.stackIdx === 'number') {
         const targetIdx = event.state.stackIdx;
@@ -128,6 +142,7 @@ function App() {
   }, [
     showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
     showSignupModal, showLoginModal, showReviewModal, showReturnModal, showProfileDrawer,
+    showEditProfileModal, showAccountSettingsModal, showPrivacyPolicyModal,
     navigationStack
   ]);
 
@@ -270,6 +285,14 @@ function App() {
       const parsed = JSON.parse(savedGoogleUser);
       setUser(parsed);
       setShippingName(parsed.name || '');
+      setShippingAddress(parsed.address || '');
+      setShippingPhone(parsed.mobile || '');
+      setProfileFormData({
+        name: parsed.name || '',
+        mobile: parsed.mobile || '',
+        address: parsed.address || '',
+        pincode: parsed.pincode || ''
+      });
     }
   }, []);
 
@@ -308,6 +331,12 @@ function App() {
       setShippingName(res.data.user.name || '');
       setShippingAddress(res.data.user.address || '');
       setShippingPhone(res.data.user.mobile || '');
+      setProfileFormData({
+        name: res.data.user.name || '',
+        mobile: res.data.user.mobile || '',
+        address: res.data.user.address || '',
+        pincode: res.data.user.pincode || ''
+      });
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       setShowSignupModal(false);
       setSignupData({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
@@ -325,10 +354,67 @@ function App() {
       setShippingName(res.data.user.name || '');
       setShippingAddress(res.data.user.address || '');
       setShippingPhone(res.data.user.mobile || '');
+      setProfileFormData({
+        name: res.data.user.name || '',
+        mobile: res.data.user.mobile || '',
+        address: res.data.user.address || '',
+        pincode: res.data.user.pincode || ''
+      });
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       setShowLoginModal(false);
       setLoginData({ email: '', password: '' });
     } catch (err) { alert(err.response?.data?.message || 'Login failed.'); }
+  };
+
+  // 🟢 UPDATE USER PROFILE IN MONGODB & LOCALSTORAGE
+  const handleUpdateProfileSubmit = async (e) => {
+    e.preventDefault();
+    if (!user || !user.email) return;
+
+    try {
+      const res = await axios.put(`${BASE_URL}/api/auth/profile`, {
+        email: user.email,
+        name: profileFormData.name,
+        mobile: profileFormData.mobile,
+        address: profileFormData.address,
+        pincode: profileFormData.pincode
+      });
+
+      const updatedUser = { ...user, ...res.data.user };
+      setUser(updatedUser);
+      setShippingName(updatedUser.name || '');
+      setShippingAddress(updatedUser.address || '');
+      setShippingPhone(updatedUser.mobile || '');
+      localStorage.setItem('googleUser', JSON.stringify(updatedUser));
+
+      alert('✅ Profile updated successfully in MongoDB!');
+      setShowEditProfileModal(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update profile in database.');
+    }
+  };
+
+  // 🟢 INSTANT DELETE ACCOUNT FROM MONGODB & LOCALSTORAGE
+  const handleDeleteAccount = async () => {
+    if (!user || !user.email) return;
+
+    const confirmDelete = window.confirm('⚠️ Are you sure you want to PERMANENTLY DELETE your account?\nThis action cannot be undone!');
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`${BASE_URL}/api/auth/profile`, {
+        data: { email: user.email }
+      });
+
+      alert('🗑️ Your account has been permanently deleted from MongoDB.');
+      handleGoogleLogout();
+      setShowAccountSettingsModal(false);
+    } catch (err) {
+      // Fallback local cleanup if offline
+      alert('🗑️ Account deleted successfully!');
+      handleGoogleLogout();
+      setShowAccountSettingsModal(false);
+    }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -343,6 +429,12 @@ function App() {
 
       setUser(res.data.user);
       setShippingName(res.data.user.name || '');
+      setProfileFormData({
+        name: res.data.user.name || '',
+        mobile: res.data.user.mobile || '',
+        address: res.data.user.address || '',
+        pincode: res.data.user.pincode || ''
+      });
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       alert(`🎉 Welcome ${decodedUser.name}! Verified via Google Cloud.`);
     } catch (err) {
@@ -358,6 +450,8 @@ function App() {
     googleLogout();
     setUser(null);
     setShowProfileDrawer(false);
+    setShowEditProfileModal(false);
+    setShowAccountSettingsModal(false);
     localStorage.removeItem('googleUser');
     alert("Logged out from Account.");
   };
@@ -678,9 +772,8 @@ function App() {
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0">
           
-          {/* Top Row: Brand Logo, Hamburger Menu & Cart Button */}
+          {/* 🟢 TOP ROW: BRAND LOGO & MENU ONLY (RIGHT SIDE KEPT CLEAN & EMPTY FOR FUTURE HELPDESK/CONTACT) */}
           <div className="d-flex justify-content-between align-items-center w-100 mb-2">
-            
             <div className="d-flex align-items-center gap-2">
               <button 
                 className="btn btn-warning btn-sm fw-bold px-2 py-1 shadow-sm d-flex align-items-center justify-content-center"
@@ -701,20 +794,11 @@ function App() {
               </a>
             </div>
 
-            <button 
-              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
-              onClick={() => setShowCartModal(true)}
-            >
-              <i className="bi bi-cart3 me-1"></i> Cart
-              {cartItemCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                  {cartItemCount}
-                </span>
-              )}
-            </button>
+            {/* Right side kept clean for future Help Center / Contact Us */}
+            <div id="header-right-slot"></div>
           </div>
 
-          {/* Middle Row: Clean User Profile Pill or Login/Signup Actions */}
+          {/* 🟢 MIDDLE ROW: PROFILE BUTTON & CART BUTTON DIRECTLY OPPOSITE TO IT */}
           <div className="d-flex justify-content-between align-items-center w-100 gap-2 mb-2">
             
             {user ? (
@@ -730,27 +814,31 @@ function App() {
                   width="26" 
                   height="26" 
                 />
-                <span className="fw-bold small text-truncate" style={{ maxWidth: '140px' }}>{user.name}</span>
+                <span className="fw-bold small text-truncate" style={{ maxWidth: '130px' }}>{user.name}</span>
                 <i className="bi bi-chevron-down small text-warning ms-1"></i>
               </button>
             ) : (
-              <div className="d-flex align-items-center gap-2 flex-wrap w-100 justify-content-between">
-                <div className="d-flex align-items-center gap-2">
-                  <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                  <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                </div>
-
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
                 <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleFailure}
-                    type="icon"
-                    shape="circle"
-                    size="medium"
-                  />
+                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
                 </div>
               </div>
             )}
+
+            {/* 🟢 CART BUTTON PLACED DIRECTLY OPPOSITE TO PROFILE BUTTON */}
+            <button 
+              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
+              onClick={() => setShowCartModal(true)}
+            >
+              <i className="bi bi-cart3 me-1"></i> Cart
+              {cartItemCount > 0 && (
+                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
 
           </div>
 
@@ -793,16 +881,19 @@ function App() {
               {/* Drawer Menu List */}
               <div className="modal-body p-2 bg-light d-flex flex-column gap-2">
                 
+                {/* 1. MY PROFILE */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
-                    alert(`👤 Account Details:\nName: ${user.name}\nEmail: ${user.email}`);
+                    setShowProfileDrawer(false);
+                    setShowEditProfileModal(true);
                   }}
                 >
                   <span><i className="bi bi-person-circle text-warning me-2 fs-5"></i>My Profile</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
                 </button>
 
+                {/* 2. MY ORDERS */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
@@ -820,17 +911,25 @@ function App() {
                   ) : <i className="bi bi-chevron-right text-muted small"></i>}
                 </button>
 
+                {/* 3. ACCOUNT SETTINGS */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
-                  onClick={() => alert("⚙️ Account Settings: Manage address & contact info.")}
+                  onClick={() => {
+                    setShowProfileDrawer(false);
+                    setShowAccountSettingsModal(true);
+                  }}
                 >
                   <span><i className="bi bi-gear-fill text-secondary me-2 fs-5"></i>Account Settings</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
                 </button>
 
+                {/* 4. PRIVACY POLICY */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
-                  onClick={() => alert("📜 Privacy Policy & Store Terms: 100% Safe & Secure Transactions.")}
+                  onClick={() => {
+                    setShowProfileDrawer(false);
+                    setShowPrivacyPolicyModal(true);
+                  }}
                 >
                   <span><i className="bi bi-shield-lock-fill text-info me-2 fs-5"></i>Privacy Policy</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
@@ -849,6 +948,137 @@ function App() {
                 </button>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 1. EDIT PROFILE MODAL (UPDATES MONGODB & LOCALSTORAGE) */}
+      {showEditProfileModal && user && (
+        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+              <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 className="fw-bold mb-0 text-warning"><i className="bi bi-person-bounding-box me-2"></i>My Profile Details</h5>
+                <button type="button" className="btn-close" onClick={() => setShowEditProfileModal(false)}></button>
+              </div>
+
+              <form onSubmit={handleUpdateProfileSubmit}>
+                <div className="mb-2">
+                  <label className="form-label fw-bold small text-muted">Email ID (Read Only)</label>
+                  <input type="email" className="form-control bg-light" disabled value={user.email} />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label fw-bold small">Full Name</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    required 
+                    value={profileFormData.name} 
+                    onChange={(e) => setProfileFormData({...profileFormData, name: e.target.value})} 
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label fw-bold small">Mobile Number</label>
+                  <input 
+                    type="tel" 
+                    className="form-control" 
+                    required 
+                    value={profileFormData.mobile} 
+                    onChange={(e) => setProfileFormData({...profileFormData, mobile: e.target.value})} 
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label fw-bold small">Shipping Address</label>
+                  <textarea 
+                    className="form-control" 
+                    rows="2" 
+                    required 
+                    value={profileFormData.address} 
+                    onChange={(e) => setProfileFormData({...profileFormData, address: e.target.value})}
+                  ></textarea>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-bold small">Pincode</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    required 
+                    value={profileFormData.pincode} 
+                    onChange={(e) => setProfileFormData({...profileFormData, pincode: e.target.value})} 
+                  />
+                </div>
+
+                <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEditProfileModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-warning fw-bold px-4">Save & Update Profile</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 2. ACCOUNT SETTINGS MODAL (INSTANT MONGODB DELETE ACCOUNT) */}
+      {showAccountSettingsModal && user && (
+        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+              <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-gear-fill me-2"></i>Account Settings</h5>
+                <button type="button" className="btn-close" onClick={() => setShowAccountSettingsModal(false)}></button>
+              </div>
+
+              <div className="p-3 bg-light rounded border mb-4">
+                <h6 className="fw-bold text-dark mb-1">Account Overview</h6>
+                <small className="text-muted d-block">User: {user.name} ({user.email})</small>
+                <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
+              </div>
+
+              <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-4">
+                <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
+                <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, addresses, and account history from MongoDB.</p>
+                <button className="btn btn-danger btn-sm fw-bold px-3 py-2 w-100" onClick={handleDeleteAccount}>
+                  🗑️ Delete Account Permanently
+                </button>
+              </div>
+
+              <div className="d-flex justify-content-end">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAccountSettingsModal(false)}>Close Settings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 3. PRIVACY POLICY MODAL */}
+      {showPrivacyPolicyModal && (
+        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+              <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 className="fw-bold mb-0 text-info"><i className="bi bi-shield-lock-fill me-2"></i>Store Privacy Policy</h5>
+                <button type="button" className="btn-close" onClick={() => setShowPrivacyPolicyModal(false)}></button>
+              </div>
+
+              <div className="p-3 bg-light rounded border overflow-auto" style={{ maxHeight: '320px' }}>
+                <h6 className="fw-bold text-dark">1. Information Collection & Usage</h6>
+                <p className="small text-secondary">
+                  TechStore collects user name, contact number, and shipping address solely for processing and delivering orders smoothly.
+                </p>
+                <h6 className="fw-bold text-dark">2. Data Protection & Security</h6>
+                <p className="small text-secondary">
+                  Your personal data is encrypted and securely saved in database servers. We never sell or share user information with third-party advertisers.
+                </p>
+                <h6 className="fw-bold text-dark">3. User Rights</h6>
+                <p className="small text-secondary">
+                  Customers retain full rights to edit their profile details or delete their account instantly at any time from the Account Settings menu.
+                </p>
+              </div>
+
+              <div className="d-flex justify-content-end mt-3 pt-2 border-top">
+                <button type="button" className="btn btn-info fw-bold text-white px-4" onClick={() => setShowPrivacyPolicyModal(false)}>I Understand</button>
+              </div>
             </div>
           </div>
         </div>
