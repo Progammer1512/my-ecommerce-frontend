@@ -323,7 +323,7 @@ function App() {
     }
   }, []);
 
-  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA TO MONGODB ATLAS (PREVENTS NAME MISMATCH)
+  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA DIRECTLY TO MONGODB ATLAS
   const syncUserUserDataToDatabase = async (updatedCart, updatedWishlist) => {
     const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
     if (!activeUser || !activeUser.email) return;
@@ -344,7 +344,7 @@ function App() {
     }
   };
 
-  // 🟢 WISHLIST TOGGLE HELPER (WITH MONGODB SYNC)
+  // 🟢 WISHLIST TOGGLE HELPER (WITH INSTANT MONGO SYNC)
   const toggleWishlist = (product) => {
     let updated;
     if (wishlist.some(item => item._id === product._id)) {
