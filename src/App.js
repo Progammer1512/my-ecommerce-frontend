@@ -273,11 +273,6 @@ function App() {
       setSubmittedReviews(JSON.parse(savedRev));
     }
 
-    const savedWish = localStorage.getItem('userWishlist');
-    if (savedWish) {
-      setWishlist(JSON.parse(savedWish));
-    }
-
     const savedAddrs = localStorage.getItem('userSavedAddresses');
     if (savedAddrs) {
       setSavedAddresses(JSON.parse(savedAddrs));
@@ -304,6 +299,7 @@ function App() {
     }
   }, [heroBanners.length]);
 
+  // 🟢 INITIAL LOAD / ACCOUNT SWITCH ISOLATION FIX
   useEffect(() => {
     const savedGoogleUser = localStorage.getItem('googleUser');
     if (savedGoogleUser) {
@@ -318,8 +314,21 @@ function App() {
         address: parsed.address || '',
         pincode: parsed.pincode || ''
       });
-      if (parsed.wishlist && Array.isArray(parsed.wishlist)) setWishlist(parsed.wishlist);
-      if (parsed.cart && Array.isArray(parsed.cart)) setCart(parsed.cart);
+      // Load specific user's wishlist and cart from session/database profile response
+      if (parsed.wishlist && Array.isArray(parsed.wishlist)) {
+        setWishlist(parsed.wishlist);
+      } else {
+        setWishlist([]);
+      }
+      if (parsed.cart && Array.isArray(parsed.cart)) {
+        setCart(parsed.cart);
+      } else {
+        setCart([]);
+      }
+    } else {
+      setUser(null);
+      setWishlist([]);
+      setCart([]);
     }
   }, []);
 
@@ -329,7 +338,7 @@ function App() {
     if (!activeUser || !activeUser.email) return;
 
     try {
-      await axios.put(`${BASE_URL}/api/auth/profile`, {
+      const res = await axios.put(`${BASE_URL}/api/auth/profile`, {
         email: activeUser.email.toLowerCase().trim(),
         name: activeUser.name || '',
         mobile: activeUser.mobile || '',
@@ -338,13 +347,18 @@ function App() {
         cart: updatedCart !== undefined ? updatedCart : cart,
         wishlist: updatedWishlist !== undefined ? updatedWishlist : wishlist
       });
+      
+      // Keep local storage synced with latest user object
+      if (res.data && res.data.user) {
+        localStorage.setItem('googleUser', JSON.stringify(res.data.user));
+      }
       console.log('✅ Synchronized Cart & Wishlist to MongoDB Database successfully!');
     } catch (err) {
       console.error('Background Sync Error:', err);
     }
   };
 
-  // 🟢 WISHLIST TOGGLE HELPER (WITH INSTANT MONGO SYNC)
+  // 🟢 WISHLIST TOGGLE HELPER (WITH ACCOUNT ISOLATION)
   const toggleWishlist = (product) => {
     let updated;
     if (wishlist.some(item => item._id === product._id)) {
@@ -353,7 +367,6 @@ function App() {
       updated = [...wishlist, product];
     }
     setWishlist(updated);
-    localStorage.setItem('userWishlist', JSON.stringify(updated));
     syncUserUserDataToDatabase(undefined, updated);
   };
 
@@ -419,6 +432,8 @@ function App() {
         address: res.data.user.address || '',
         pincode: res.data.user.pincode || ''
       });
+      setWishlist(res.data.user.wishlist || []);
+      setCart(res.data.user.cart || []);
       localStorage.setItem('googleUser', JSON.stringify(res.data.user));
       setShowSignupModal(false);
       setSignupData({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
@@ -427,22 +442,27 @@ function App() {
     }
   };
 
+  // 🟢 LOGIN WITH ACCOUNT WISHLIST ISOLATION
   const handleEmailLoginSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await axios.post(`${BASE_URL}/api/auth/login`, loginData);
       alert(res.data.message || 'Login successful!');
-      setUser(res.data.user);
-      setShippingName(res.data.user.name || '');
-      setShippingAddress(res.data.user.address || '');
-      setShippingPhone(res.data.user.mobile || '');
+      const loggedUser = res.data.user;
+      setUser(loggedUser);
+      setShippingName(loggedUser.name || '');
+      setShippingAddress(loggedUser.address || '');
+      setShippingPhone(loggedUser.mobile || '');
       setProfileFormData({
-        name: res.data.user.name || '',
-        mobile: res.data.user.mobile || '',
-        address: res.data.user.address || '',
-        pincode: res.data.user.pincode || ''
+        name: loggedUser.name || '',
+        mobile: loggedUser.mobile || '',
+        address: loggedUser.address || '',
+        pincode: loggedUser.pincode || ''
       });
-      localStorage.setItem('googleUser', JSON.stringify(res.data.user));
+      // 🟢 Immediately load this specific user's database wishlist & cart
+      setWishlist(loggedUser.wishlist || []);
+      setCart(loggedUser.cart || []);
+      localStorage.setItem('googleUser', JSON.stringify(loggedUser));
       setShowLoginModal(false);
       setLoginData({ email: '', password: '' });
       fetchCoupons();
@@ -499,6 +519,7 @@ function App() {
     }
   };
 
+  // 🟢 GOOGLE LOGIN WITH ACCOUNT WISHLIST ISOLATION
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const decodedUser = jwtDecode(credentialResponse.credential);
@@ -509,15 +530,19 @@ function App() {
         avatar: decodedUser.picture
       });
 
-      setUser(res.data.user);
-      setShippingName(res.data.user.name || '');
+      const googleUserData = res.data.user;
+      setUser(googleUserData);
+      setShippingName(googleUserData.name || '');
       setProfileFormData({
-        name: res.data.user.name || '',
-        mobile: res.data.user.mobile || '',
-        address: res.data.user.address || '',
-        pincode: res.data.user.pincode || ''
+        name: googleUserData.name || '',
+        mobile: googleUserData.mobile || '',
+        address: googleUserData.address || '',
+        pincode: googleUserData.pincode || ''
       });
-      localStorage.setItem('googleUser', JSON.stringify(res.data.user));
+      // 🟢 Immediately set correct user wishlist & cart from DB response
+      setWishlist(googleUserData.wishlist || []);
+      setCart(googleUserData.cart || []);
+      localStorage.setItem('googleUser', JSON.stringify(googleUserData));
       alert(`🎉 Welcome ${decodedUser.name}! Verified via Google Cloud.`);
       fetchCoupons();
     } catch (err) {
@@ -529,9 +554,12 @@ function App() {
     alert("Google Sign-In was cancelled or failed.");
   };
 
+  // 🟢 LOGOUT WITH COMPLETE STATE CLEARING
   const handleGoogleLogout = () => {
     googleLogout();
     setUser(null);
+    setWishlist([]);
+    setCart([]);
     setShowProfileDrawer(false);
     setShowEditProfileModal(false);
     setShowAccountSettingsModal(false);
