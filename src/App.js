@@ -190,7 +190,8 @@ function App() {
   // 🟢 FETCH COUPONS FILTERED BY TARGETED USER EMAIL
   const fetchCoupons = async () => {
     try {
-      const emailQuery = user && user.email ? `?email=${encodeURIComponent(user.email)}` : '';
+      const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
+      const emailQuery = activeUser && activeUser.email ? `?email=${encodeURIComponent(activeUser.email)}` : '';
       const res = await axios.get(`${BASE_URL}/api/coupons${emailQuery}`, { timeout: 10000 });
       if (Array.isArray(res.data) && res.data.length > 0) {
         setCoupons(res.data);
@@ -322,17 +323,24 @@ function App() {
     }
   }, []);
 
-  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA TO MONGODB ATLAS
+  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA TO MONGODB ATLAS (PREVENTS NAME MISMATCH)
   const syncUserUserDataToDatabase = async (updatedCart, updatedWishlist) => {
-    if (!user || !user.email) return;
+    const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
+    if (!activeUser || !activeUser.email) return;
+
     try {
       await axios.put(`${BASE_URL}/api/auth/profile`, {
-        email: user.email,
+        email: activeUser.email.toLowerCase().trim(),
+        name: activeUser.name || '',
+        mobile: activeUser.mobile || '',
+        address: activeUser.address || '',
+        pincode: activeUser.pincode || '',
         cart: updatedCart !== undefined ? updatedCart : cart,
         wishlist: updatedWishlist !== undefined ? updatedWishlist : wishlist
       });
+      console.log('✅ Synchronized Cart & Wishlist to MongoDB Database successfully!');
     } catch (err) {
-      console.log('Background Sync error');
+      console.error('Background Sync Error:', err);
     }
   };
 
