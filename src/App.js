@@ -72,7 +72,7 @@ function App() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // 🟢 MONGODB DYNAMIC BANNERS STATE (NO HARDCODED DEFAULT FAKE BANNERS)
+  // 🟢 MONGODB REAL BANNERS STATE (NO FAKE HARDCODED DEFAULT BANNERS)
   const [heroBanners, setHeroBanners] = useState([]);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -92,10 +92,9 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH AUTO-SCROLL TO TOP
+  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
   useEffect(() => {
     const handlePopState = (event) => {
-      // 1. Close Modals first if open
       if (showCartModal) { setShowCartModal(false); return; }
       if (showCheckoutModal) { setShowCheckoutModal(false); return; }
       if (showCategoryMenu) { setShowCategoryMenu(false); return; }
@@ -105,7 +104,6 @@ function App() {
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
 
-      // 2. Linear History Stack Navigation
       if (event.state && typeof event.state.stackIdx === 'number') {
         const targetIdx = event.state.stackIdx;
         if (targetIdx >= 0 && targetIdx < navigationStack.length) {
@@ -116,7 +114,6 @@ function App() {
         }
       }
 
-      // Reset to main catalog when history stack ends
       setSelectedProductDetail(null);
       setCurrentIndex(-1);
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
@@ -130,7 +127,7 @@ function App() {
     navigationStack
   ]);
 
-  // 🟢 HELPER TO OPEN PRODUCT DETAILS AND BUILD CLEAN HISTORY STACK WITH AUTO TOP-SCROLL
+  // HELPER TO OPEN PRODUCT DETAILS AND BUILD CLEAN HISTORY STACK
   const handleOpenProductDetail = (p) => {
     let newStack;
     let newIdx;
@@ -151,7 +148,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // 🟢 STATIC BUTTON ACTION: ALWAYS DIRECTLY RESET TO ALL PRODUCTS CATALOG
+  // STATIC BUTTON ACTION: ALWAYS DIRECTLY RESET TO ALL PRODUCTS CATALOG
   const handleResetToAllCatalog = () => {
     setSelectedProductDetail(null);
     setNavigationStack([]);
@@ -199,10 +196,10 @@ function App() {
     }
   };
 
-  // 🟢 FETCH BANNERS DIRECTLY FROM MONGODB (NO FAKE DEFAULTS)
-  const fetchBanners = async () => {
+  // 🟢 FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER ON BACKGROUND AUTO-REFRESH
+  const fetchBanners = async (isInitial = false) => {
     try {
-      setBannersLoading(true);
+      if (isInitial) setBannersLoading(true);
       const res = await axios.get(`${BASE_URL}/api/banners`, { timeout: 10000 });
       if (res.data && res.data.length > 0) {
         const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
@@ -212,9 +209,8 @@ function App() {
       }
     } catch (err) {
       console.error('Error fetching banners:', err);
-      setHeroBanners([]);
     } finally {
-      setBannersLoading(false);
+      if (isInitial) setBannersLoading(false);
     }
   };
 
@@ -233,7 +229,7 @@ function App() {
 
   useEffect(() => {
     fetchProducts(true);
-    fetchBanners();
+    fetchBanners(true); // First time load shows spinner once
     fetchLiveOrders();
     fetchReviews();
     fetchCoupons();
@@ -250,7 +246,7 @@ function App() {
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
-      fetchBanners();
+      fetchBanners(false); // Silent background refresh without reloading spinner
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -810,7 +806,7 @@ function App() {
       {/* PRODUCT DETAIL OR MAIN CATALOG */}
       {selectedProductDetail ? (
         <div className="container py-4">
-          {/* 🟢 STATIC BUTTON THAT ALWAYS DIRECTLY TAKES USER BACK TO MAIN ALL PRODUCTS CATALOG */}
+          {/* STATIC BUTTON THAT ALWAYS DIRECTLY TAKES USER BACK TO MAIN ALL PRODUCTS CATALOG */}
           <button 
             className="btn btn-outline-dark fw-bold mb-4 rounded-pill px-4 shadow-sm"
             onClick={handleResetToAllCatalog}
@@ -1013,7 +1009,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* 🟢 DYNAMIC MONGODB BANNERS WITH CLEAN LOADING PLACEHOLDER */}
+          {/* 🟢 DYNAMIC MONGODB BANNERS WITH CLEAN INITIAL LOADING PLACEHOLDER */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
