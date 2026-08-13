@@ -47,9 +47,10 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // FULL-PAGE PRODUCT DETAIL STATE & HISTORY STACK FOR MULTI-LEVEL PRODUCT NAVIGATION
+  // FULL-PAGE PRODUCT DETAIL STATE & DUAL STACKS FOR BACK & FORWARD NAVIGATION
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [productHistory, setProductHistory] = useState([]);
+  const [forwardHistory, setForwardHistory] = useState([]);
   const [allReviews, setAllReviews] = useState([]);
 
   // Review & Rating Modal State
@@ -68,7 +69,6 @@ function App() {
 
   // DOUBLE BACK TO EXIT STATE & REFS
   const [showExitToast, setShowExitToast] = useState(false);
-  const lastBackPressTime = useRef(0);
 
   // Touch Swipe Refs for Hero Banner
   const touchStartX = useRef(0);
@@ -116,10 +116,10 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 MULTI-LEVEL BACK BUTTON HANDLER WITH INSTANT SCROLL TO TOP
+  // 🟢 SMART BIDIRECTIONAL (BACK & FORWARD) NAVIGATION HANDLER WITH SCROLL TO TOP
   useEffect(() => {
-    const handlePopState = () => {
-      // 1. Close Modals first if any are open
+    const handlePopState = (event) => {
+      // 1. Close Modals first if open
       if (showCartModal) { setShowCartModal(false); return; }
       if (showCheckoutModal) { setShowCheckoutModal(false); return; }
       if (showCategoryMenu) { setShowCategoryMenu(false); return; }
@@ -129,21 +129,34 @@ function App() {
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
 
-      // 2. If in Product Detail View, pop back to Previous Product & FORCE SCROLL TO TOP
+      const state = event.state;
+
+      // FORWARD NAVIGATION DETECTED
+      if (state && state.forwardProduct) {
+        const nextProd = state.forwardProduct;
+        if (selectedProductDetail) {
+          setProductHistory(prev => [...prev, selectedProductDetail]);
+        }
+        setSelectedProductDetail(nextProd);
+        if (forwardHistory.length > 0) {
+          setForwardHistory(prev => prev.slice(0, prev.length - 1));
+        }
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
+        return;
+      }
+
+      // BACK NAVIGATION DETECTED
       if (selectedProductDetail) {
+        setForwardHistory(prev => [...prev, selectedProductDetail]);
+
         if (productHistory.length > 0) {
           const previousProduct = productHistory[productHistory.length - 1];
           setProductHistory(prev => prev.slice(0, prev.length - 1));
           setSelectedProductDetail(previousProduct);
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-          }, 0);
+          setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
         } else {
-          // If no previous product in history stack, go back to main catalog
           setSelectedProductDetail(null);
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-          }, 0);
+          setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
         }
         return;
       }
@@ -154,21 +167,26 @@ function App() {
   }, [
     showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
     showSignupModal, showLoginModal, showReviewModal, showReturnModal,
-    selectedProductDetail, productHistory
+    selectedProductDetail, productHistory, forwardHistory
   ]);
 
-  // 🟢 HELPER TO OPEN PRODUCT DETAILS WITH HISTORY STACK PRESERVATION & SCROLL TO TOP
+  // 🟢 HELPER TO OPEN PRODUCT DETAILS WITH FULL HISTORY STACK
   const handleOpenProductDetail = (p) => {
     if (selectedProductDetail && selectedProductDetail._id !== p._id) {
       setProductHistory(prev => [...prev, selectedProductDetail]);
     }
+    setForwardHistory([]); // Clear forward stack on new item click
     setSelectedProductDetail(p);
-    window.history.pushState({ productPage: true }, '', window.location.href);
+    window.history.pushState({ productPage: true, forwardProduct: p }, '', window.location.href);
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   // HELPER TO MANUALLY CLICK BACK BUTTON ON UI
   const handleManualBackFromProduct = () => {
+    if (selectedProductDetail) {
+      setForwardHistory(prev => [...prev, selectedProductDetail]);
+    }
+
     if (productHistory.length > 0) {
       const previousProduct = productHistory[productHistory.length - 1];
       setProductHistory(prev => prev.slice(0, prev.length - 1));
@@ -724,7 +742,7 @@ function App() {
               <a 
                 className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
                 href="#home"
-                onClick={() => { setSelectedProductDetail(null); setProductHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}
+                onClick={() => { setSelectedProductDetail(null); setProductHistory([]); setForwardHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}
               >
                 <i className="bi bi-shop me-1"></i>TechStore
               </a>
@@ -791,7 +809,7 @@ function App() {
               className="form-control form-control-sm rounded-pill px-3 shadow-sm" 
               placeholder="Search products..." 
               value={searchTerm} 
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); setProductHistory([]); }} 
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); setSelectedProductDetail(null); setProductHistory([]); setForwardHistory([]); }} 
             />
           </div>
 
@@ -824,6 +842,7 @@ function App() {
                         setCurrentPage(1);
                         setSelectedProductDetail(null);
                         setProductHistory([]);
+                        setForwardHistory([]);
                         setShowCategoryMenu(false);
                       }}
                     >
@@ -1241,7 +1260,7 @@ function App() {
             <div className="col-md-4">
               <h6 className="fw-bold text-white mb-2">Quick Navigation</h6>
               <ul className="list-unstyled small text-white-50 m-0 d-flex flex-column gap-1">
-                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => { setSelectedProductDetail(null); setProductHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Home Catalog</a></li>
+                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => { setSelectedProductDetail(null); setProductHistory([]); setForwardHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
               </ul>
