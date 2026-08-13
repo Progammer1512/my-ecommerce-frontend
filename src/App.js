@@ -92,7 +92,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
+  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH AUTO-SCROLL TO TOP
   useEffect(() => {
     const handlePopState = (event) => {
       if (showCartModal) { setShowCartModal(false); return; }
@@ -196,7 +196,7 @@ function App() {
     }
   };
 
-  // 🟢 FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER ON BACKGROUND AUTO-REFRESH
+  // FETCH BANNERS FROM MONGODB WITHOUT FLICKERING SPINNER ON BACKGROUND AUTO-REFRESH
   const fetchBanners = async (isInitial = false) => {
     try {
       if (isInitial) setBannersLoading(true);
@@ -229,7 +229,7 @@ function App() {
 
   useEffect(() => {
     fetchProducts(true);
-    fetchBanners(true); // First time load shows spinner once
+    fetchBanners(true);
     fetchLiveOrders();
     fetchReviews();
     fetchCoupons();
@@ -246,7 +246,7 @@ function App() {
       fetchLiveOrders();
       fetchReviews();
       fetchCoupons();
-      fetchBanners(false); // Silent background refresh without reloading spinner
+      fetchBanners(false);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -1009,7 +1009,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* 🟢 DYNAMIC MONGODB BANNERS WITH CLEAN INITIAL LOADING PLACEHOLDER */}
+          {/* 🟢 DYNAMIC MONGODB BANNERS WITH BLURRED IMAGE BACKDROP & MOBILE VISIBILITY */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
@@ -1022,41 +1022,62 @@ function App() {
             ) : heroBanners.length > 0 && currentBanner ? (
               <div 
                 className="rounded-4 p-3 p-md-4 text-white shadow-lg overflow-hidden position-relative"
-                style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px', touchAction: 'pan-y' }}
+                style={{ 
+                  minHeight: '160px', 
+                  touchAction: 'pan-y',
+                  backgroundColor: '#111827'
+                }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                <div className="row align-items-center">
-                  <div className="col-md-8">
+                {/* 🟢 DYNAMIC BLURRED IMAGE SHADOW BACKGROUND */}
+                {currentBanner.img && (
+                  <div 
+                    className="position-absolute top-0 start-0 w-100 h-100"
+                    style={{
+                      backgroundImage: `url(${currentBanner.img})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      filter: 'blur(20px) brightness(0.4)',
+                      transform: 'scale(1.2)',
+                      zIndex: 0
+                    }}
+                  />
+                )}
+
+                <div className="row align-items-center position-relative z-1 g-3">
+                  <div className="col-7 col-md-8">
                     {currentBanner.badge && (
-                      <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small">
+                      <span className="badge bg-warning text-dark fw-bold mb-2 px-2 py-1 small shadow-sm">
                         {currentBanner.badge}
                       </span>
                     )}
-                    <h2 className="fw-bold m-0 fs-4 fs-md-2">{currentBanner.title}</h2>
+                    <h2 className="fw-bold m-0 fs-5 fs-md-2 text-shadow">{currentBanner.title}</h2>
                     {currentBanner.subtitle && (
                       <p className="lead m-0 mt-1 text-white-50 fs-6 d-none d-sm-block">{currentBanner.subtitle}</p>
                     )}
                   </div>
+
+                  {/* 🟢 ALWAYS VISIBLE ON MOBILE & DESKTOP BROWSERS */}
                   {currentBanner.img && (
-                    <div className="col-md-4 text-end d-none d-md-block">
+                    <div className="col-5 col-md-4 text-end">
                       <img 
                         src={currentBanner.img} 
                         alt="Offer" 
-                        className="img-fluid rounded-3 shadow" 
-                        style={{ maxHeight: '130px', objectFit: 'cover' }}
+                        className="img-fluid rounded-3 shadow-lg border border-white border-opacity-25" 
+                        style={{ maxHeight: '130px', objectFit: 'cover', width: '100%' }}
                       />
                     </div>
                   )}
                 </div>
 
                 {heroBanners.length > 1 && (
-                  <div className="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-flex gap-2">
+                  <div className="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-flex gap-2 z-2">
                     {heroBanners.map((_, idx) => (
                       <button
                         key={idx}
-                        className={`btn btn-sm p-1 rounded-circle ${currentSlide === idx ? 'bg-warning' : 'bg-white bg-opacity-50'}`}
+                        className={`btn btn-sm p-1 rounded-circle border-0 ${currentSlide === idx ? 'bg-warning' : 'bg-white bg-opacity-50'}`}
                         style={{ width: '8px', height: '8px' }}
                         onClick={() => setCurrentSlide(idx)}
                       />
