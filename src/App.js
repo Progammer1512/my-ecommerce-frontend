@@ -116,7 +116,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 SMART MULTI-LEVEL PRODUCT NAVIGATION & BACK BUTTON HANDLER
+  // 🟢 MULTI-LEVEL BACK BUTTON HANDLER WITH INSTANT SCROLL TO TOP
   useEffect(() => {
     const handlePopState = () => {
       // 1. Close Modals first if any are open
@@ -129,16 +129,21 @@ function App() {
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
 
-      // 2. If in Product Detail View, pop back to Previous Product in History Stack
+      // 2. If in Product Detail View, pop back to Previous Product & FORCE SCROLL TO TOP
       if (selectedProductDetail) {
         if (productHistory.length > 0) {
           const previousProduct = productHistory[productHistory.length - 1];
           setProductHistory(prev => prev.slice(0, prev.length - 1));
           setSelectedProductDetail(previousProduct);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }, 0);
         } else {
           // If no previous product in history stack, go back to main catalog
           setSelectedProductDetail(null);
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }, 0);
         }
         return;
       }
@@ -152,14 +157,14 @@ function App() {
     selectedProductDetail, productHistory
   ]);
 
-  // 🟢 HELPER TO OPEN PRODUCT DETAILS WITH HISTORY STACK PRESERVATION
+  // 🟢 HELPER TO OPEN PRODUCT DETAILS WITH HISTORY STACK PRESERVATION & SCROLL TO TOP
   const handleOpenProductDetail = (p) => {
     if (selectedProductDetail && selectedProductDetail._id !== p._id) {
       setProductHistory(prev => [...prev, selectedProductDetail]);
     }
     setSelectedProductDetail(p);
     window.history.pushState({ productPage: true }, '', window.location.href);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   // HELPER TO MANUALLY CLICK BACK BUTTON ON UI
@@ -168,10 +173,11 @@ function App() {
       const previousProduct = productHistory[productHistory.length - 1];
       setProductHistory(prev => prev.slice(0, prev.length - 1));
       setSelectedProductDetail(previousProduct);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' });
     } else {
       setSelectedProductDetail(null);
       setProductHistory([]);
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
@@ -718,7 +724,7 @@ function App() {
               <a 
                 className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
                 href="#home"
-                onClick={() => { setSelectedProductDetail(null); setProductHistory([]); }}
+                onClick={() => { setSelectedProductDetail(null); setProductHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}
               >
                 <i className="bi bi-shop me-1"></i>TechStore
               </a>
@@ -1235,7 +1241,7 @@ function App() {
             <div className="col-md-4">
               <h6 className="fw-bold text-white mb-2">Quick Navigation</h6>
               <ul className="list-unstyled small text-white-50 m-0 d-flex flex-column gap-1">
-                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => { setSelectedProductDetail(null); setProductHistory([]); }}>Home Catalog</a></li>
+                <li><a href="#home" className="text-white-50 text-decoration-none" onClick={() => { setSelectedProductDetail(null); setProductHistory([]); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
               </ul>
