@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { GoogleLogin, googleLogout } from '@react-oauth/google';
@@ -65,6 +65,10 @@ function App() {
   const [returnReason, setReturnReason] = useState('Damaged or Defective Item');
   const [returnComments, setReturnComments] = useState('');
 
+  // Touch Swipe Refs for Hero Banner
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
   // Default Fallback Banners
   const defaultBanners = [
     {
@@ -106,6 +110,32 @@ function App() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 16;
+
+  // 🟢 SMART MOBILE BACK BUTTON HANDLING (PREVENTS BLANK SCREEN ON BACK)
+  useEffect(() => {
+    const handlePopState = (e) => {
+      // If any modal or detail page is active, close it instead of exiting the page
+      if (showCartModal) { setShowCartModal(false); return; }
+      if (showCheckoutModal) { setShowCheckoutModal(false); return; }
+      if (showCategoryMenu) { setShowCategoryMenu(false); return; }
+      if (showOrderTracking) { setShowOrderTracking(false); return; }
+      if (showSignupModal) { setShowSignupModal(false); return; }
+      if (showLoginModal) { setShowLoginModal(false); return; }
+      if (showReviewModal) { setShowReviewModal(false); return; }
+      if (showReturnModal) { setShowReviewModalReturn(false); return; }
+      if (selectedProductDetail) { setSelectedProductDetail(null); return; }
+    };
+
+    window.history.pushState(null, null, window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [
+    showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
+    showSignupModal, showLoginModal, showReviewModal, showReturnModal, selectedProductDetail
+  ]);
 
   const fetchCoupons = async () => {
     try {
@@ -218,6 +248,34 @@ function App() {
       setShippingName(parsed.name || '');
     }
   }, []);
+
+  // 🟢 TOUCH SWIPE LOGIC FOR BANNER (INFINITE LOOP RIGHT-TO-LEFT & LEFT-TO-RIGHT)
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 40;
+    const isRightSwipe = distance < -40;
+
+    if (isLeftSwipe) {
+      // Right to Left Swipe -> Next Slide (Infinite Loop Back to 1st Banner)
+      setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
+    }
+    if (isRightSwipe) {
+      // Left to Right Swipe -> Previous Slide (Infinite Loop Back to Last Banner)
+      setCurrentSlide((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
+    }
+
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  };
 
   const handleEmailSignupSubmit = async (e) => {
     e.preventDefault();
@@ -939,9 +997,13 @@ function App() {
         <>
           {currentBanner && (
             <div className="container mt-3 mb-2 px-2 px-md-3">
+              {/* 🟢 SWIPEABLE HERO BANNER WITH INFINITE LOOP */}
               <div 
                 className="rounded-4 p-3 p-md-4 text-white shadow-lg overflow-hidden position-relative"
-                style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px' }}
+                style={{ background: currentBanner.bg || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)', minHeight: '160px', touchAction: 'pan-y' }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
                 <div className="row align-items-center">
                   <div className="col-md-8">
