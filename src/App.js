@@ -10,9 +10,21 @@ const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 // RELIABLE FALLBACK IMAGE
 const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
 
-// HELPER: DETECT IF USER IS ON MOBILE DEVICE
+// 🟢 HELPER 1: DETECT IF RUNNING AS INSTALLED STANDALONE APP
+const isRunningStandalone = () => {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes('android-app://')
+  );
+};
+
+// 🟢 HELPER 2: DETECT IF USER IS ON MOBILE BROWSER (NOT DESKTOP)
 const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.innerWidth <= 768
+  );
 };
 
 // Helper to filter out corrupted local/broken image paths
@@ -39,7 +51,7 @@ function App() {
   // 📲 NATIVE PWA APP INSTALL PROMPT STATES
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(() => isRunningStandalone());
 
   // 🌓 DARK MODE / LIGHT MODE PERSISTENT STATE
   const [darkMode, setDarkMode] = useState(() => {
@@ -169,15 +181,20 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON MOBILE BROWSERS (NEVER ON DESKTOP)
+  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS (NEVER IN INSTALLED APP & NEVER ON DESKTOP)
   useEffect(() => {
-    if (!isMobileDevice()) return; // 🛑 DESKTOP BYPASS
+    if (isRunningStandalone() || !isMobileDevice()) {
+      setShowAppDownloadModal(false);
+      return;
+    }
 
     const hasSeen = sessionStorage.getItem('hasSeenAppPopup');
     if (!hasSeen) {
       const timer = setTimeout(() => {
-        setShowAppDownloadModal(true);
-        sessionStorage.setItem('hasSeenAppPopup', 'true');
+        if (!isRunningStandalone()) {
+          setShowAppDownloadModal(true);
+          sessionStorage.setItem('hasSeenAppPopup', 'true');
+        }
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -187,7 +204,9 @@ function App() {
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
-      setDeferredInstallPrompt(e);
+      if (!isRunningStandalone()) {
+        setDeferredInstallPrompt(e);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -196,7 +215,6 @@ function App() {
       setIsAppInstalled(true);
       setShowAppDownloadModal(false);
       setDeferredInstallPrompt(null);
-      alert('🎉 TechStore Mobile App installed successfully on your home screen!');
     });
 
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -209,6 +227,7 @@ function App() {
       const { outcome } = await deferredInstallPrompt.userChoice;
       if (outcome === 'accepted') {
         setShowAppDownloadModal(false);
+        setIsAppInstalled(true);
         setDeferredInstallPrompt(null);
       }
     } else {
@@ -1086,8 +1105,8 @@ function App() {
         </div>
       </div>
 
-      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (ONLY ON MOBILE) */}
-      {showAppDownloadModal && !isAppInstalled && isMobileDevice() && (
+      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (ONLY ON MOBILE BROWSER, NEVER IN APP & NEVER ON DESKTOP) */}
+      {showAppDownloadModal && !isAppInstalled && isMobileDevice() && !isRunningStandalone() && (
         <div className="modal show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1080 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center p-3 p-md-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
@@ -1572,7 +1591,7 @@ function App() {
                     10% OFF
                   </span>
                   
-                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center' }}>
                     <img 
                       src={selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
                       alt={selectedProductDetail.name} 
@@ -2020,32 +2039,34 @@ function App() {
         </>
       )}
 
-      {/* FOOTER */}
+      {/* 🟢 FOOTER WITH VISIBLE APP DOWNLOAD (HIDDEN INSIDE INSTALLED APP) */}
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
           
-          {/* 1-CLICK NATIVE PWA INSTALL HIGHLIGHT BANNER IN FOOTER */}
-          <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
-            <div className="col-md-7 text-start">
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <img src="https://cdn-icons-png.flaticon.com/512/3081/3081559.png" alt="App" width="36" height="36" className="rounded-2 shadow-sm" />
-                <h5 className="fw-bold text-warning m-0">Experience TechStore Official App</h5>
+          {/* SHOW ONLY IF RUNNING IN BROWSER, HIDE COMPLETELY INSIDE INSTALLED APP */}
+          {!isRunningStandalone() && (
+            <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
+              <div className="col-md-7 text-start">
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <img src="https://cdn-icons-png.flaticon.com/512/3081/3081559.png" alt="App" width="36" height="36" className="rounded-2 shadow-sm" />
+                  <h5 className="fw-bold text-warning m-0">Experience TechStore Official App</h5>
+                </div>
+                <p className="small text-white-50 m-0">
+                  Install our official mobile app directly to your home screen with a single click. Fast, secure, and offline-ready!
+                </p>
               </div>
-              <p className="small text-white-50 m-0">
-                Install our official mobile app directly to your home screen with a single click. Fast, secure, and offline-ready!
-              </p>
+              <div className="col-md-5 text-md-end mt-3 mt-md-0">
+                <button 
+                  type="button"
+                  onClick={handleTriggerAppInstall}
+                  className="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow d-inline-flex align-items-center gap-2 text-dark"
+                >
+                  <i className="bi bi-phone-fill fs-5"></i>
+                  <span>Click Here to Install App (1-Click)</span>
+                </button>
+              </div>
             </div>
-            <div className="col-md-5 text-md-end mt-3 mt-md-0">
-              <button 
-                type="button"
-                onClick={handleTriggerAppInstall}
-                className="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow d-inline-flex align-items-center gap-2 text-dark"
-              >
-                <i className="bi bi-phone-fill fs-5"></i>
-                <span>Click Here to Install App (1-Click)</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="row g-4">
             <div className="col-md-4">
@@ -2060,7 +2081,9 @@ function App() {
                 <li><a href="#home" className="text-white-50 text-decoration-none" onClick={handleResetToAllCatalog}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
-                <li><span style={{ cursor: 'pointer' }} onClick={handleTriggerAppInstall} className="text-warning fw-bold">📲 Install Mobile App</span></li>
+                {!isRunningStandalone() && (
+                  <li><span style={{ cursor: 'pointer' }} onClick={handleTriggerAppInstall} className="text-warning fw-bold">📲 Install Mobile App</span></li>
+                )}
               </ul>
             </div>
             <div className="col-md-4">
