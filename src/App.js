@@ -5,7 +5,7 @@ import { GoogleLogin, googleLogout } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 
 // LIVE BACKEND BASE URL
-const BASE_URL = 'https://my-ecommerce-project-nmfj.onrender.com';
+const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 
 // Helper to filter out corrupted local/broken image paths
 const isValidImageUrl = (url) => {
