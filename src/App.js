@@ -1255,15 +1255,13 @@ function App() {
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                            {/* 🟢 ROUNDED IMAGE IN WISHLIST */}
-                            <img 
-                              src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} 
-                              alt={item.name} 
-                              className="shadow-sm" 
-                              width="48" 
-                              height="48" 
-                              style={{ objectFit: 'contain', borderRadius: '12px' }} 
-                            />
+                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                              <img 
+                                src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} 
+                                alt={item.name} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                              />
+                            </div>
                             <div className="flex-grow-1 text-truncate">
                               <span className="fw-bold small text-truncate d-block">{item.name}</span>
                               <span className="text-success fw-bold small">₹{item.price}</span>
@@ -1463,7 +1461,7 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
-                {/* 🟢 ROUNDED CONTAINER & FLOATING ROUNDED IMAGE */}
+                {/* 🟢 ROUNDED CONTAINER & FLOATING ROUNDED IMAGE IN PRODUCT DETAIL */}
                 <div 
                   className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
                   style={{ minHeight: '320px' }}
@@ -1482,17 +1480,19 @@ function App() {
                   </span>
                   
                   {/* 🟢 PRODUCT DETAIL IMAGE WITH PERFECT PROPORTIONS & ROUNDED CORNERS */}
-                  <img 
-                    src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
-                    alt={selectedProductDetail.name} 
-                    className="img-fluid shadow-sm" 
-                    style={{ 
-                      maxHeight: '340px', 
-                      width: '92%',
-                      objectFit: 'contain', 
-                      borderRadius: '20px' 
-                    }}
-                  />
+                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img 
+                      src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
+                      alt={selectedProductDetail.name} 
+                      className="shadow-sm" 
+                      style={{ 
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover', 
+                        borderRadius: '18px' 
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1644,12 +1644,14 @@ function App() {
                       style={{ height: '160px', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
-                      <img 
-                        src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                        className="img-fluid shadow-sm" 
-                        alt={p.name} 
-                        style={{ maxHeight: '135px', width: '90%', objectFit: 'contain', borderRadius: '16px' }}
-                      />
+                      <div style={{ width: '90%', height: '135px', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img 
+                          src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
+                          className="shadow-sm" 
+                          alt={p.name} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
                     </div>
                     <div className={`card-body p-2 p-md-3 d-flex flex-column border-top ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                       <span className="badge bg-secondary mb-1 w-auto me-auto" style={{ fontSize: '10px' }}>{p.category || 'General'}</span>
@@ -1799,23 +1801,34 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 FLOATING ROUNDED IMAGE CONTAINER (CLEARLY VISIBLE ON MOBILE) */}
+                          {/* 🟢 FULLY CLIPPED ROUNDED IMAGE FRAME */}
                           <div 
                             className={`text-center p-2 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
-                            style={{ height: '160px', cursor: 'pointer' }}
+                            style={{ height: '170px', cursor: 'pointer' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
-                            <img 
-                              src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                              className="img-fluid shadow-sm" 
-                              alt={p.name} 
+                            <div 
                               style={{ 
-                                maxHeight: '140px', 
-                                width: '88%', 
-                                objectFit: 'contain', 
-                                borderRadius: '18px' 
+                                width: '100%', 
+                                height: '100%', 
+                                borderRadius: '16px', 
+                                overflow: 'hidden', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa'
                               }}
-                            />
+                            >
+                              <img 
+                                src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
+                                alt={p.name} 
+                                style={{ 
+                                  width: '100%', 
+                                  height: '100%', 
+                                  objectFit: 'cover' 
+                                }}
+                              />
+                            </div>
                           </div>
                           
                           <div className={`card-body p-2 p-md-3 d-flex flex-column border-top flex-grow-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
