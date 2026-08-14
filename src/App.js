@@ -10,9 +10,6 @@ const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 // RELIABLE FALLBACK IMAGE
 const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
 
-// APP DOWNLOAD LINK (Put your actual .apk direct drive/server link here)
-const APP_DOWNLOAD_URL = 'https://my-ecommerce-admin.onrender.com/techstore-app.apk';
-
 // Helper to filter out corrupted local/broken image paths
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -34,8 +31,10 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // 📲 APP DOWNLOAD POPUP STATE
+  // 📲 NATIVE PWA APP INSTALL PROMPT STATES
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   // 🌓 DARK MODE / LIGHT MODE PERSISTENT STATE
   const [darkMode, setDarkMode] = useState(() => {
@@ -165,19 +164,46 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 📲 SHOW APP DOWNLOAD POPUP AFTER 2 SECONDS (ON FIRST VISIT PER SESSION)
+  // 📲 NATIVE APP INSTALL EVENT LISTENER
   useEffect(() => {
-    const hasSeenPopup = sessionStorage.getItem('hasSeenAppPopup');
-    if (!hasSeenPopup) {
-      const timer = setTimeout(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+      const hasSeen = sessionStorage.getItem('hasSeenAppPopup');
+      if (!hasSeen) {
         setShowAppDownloadModal(true);
         sessionStorage.setItem('hasSeenAppPopup', 'true');
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    window.addEventListener('appinstalled', () => {
+      setIsAppInstalled(true);
+      setShowAppDownloadModal(false);
+      setDeferredInstallPrompt(null);
+      alert('🎉 TechStore Mobile App installed successfully on your home screen!');
+    });
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
+  // 📲 FUNCTION: TRIGGER 1-CLICK NATIVE INSTALLATION
+  const handleTriggerAppInstall = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowAppDownloadModal(false);
+        setDeferredInstallPrompt(null);
+      }
+    } else {
+      alert("📱 To install on Android/Chrome:\n1. Tap the 3 dots (⋮) in your browser\n2. Click 'Install App' or 'Add to Home Screen'!");
+      setShowAppDownloadModal(false);
+    }
+  };
+
+  // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER
   useEffect(() => {
     const handlePopState = (event) => {
       if (showAppDownloadModal) { setShowAppDownloadModal(false); return; }
@@ -246,7 +272,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // FETCH COUPONS
   const fetchCoupons = async () => {
     try {
       const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
@@ -257,18 +282,14 @@ function App() {
       }
     } catch (err) {
       const savedCoupons = localStorage.getItem('adminCoupons');
-      if (savedCoupons) {
-        setCoupons(JSON.parse(savedCoupons));
-      }
+      if (savedCoupons) setCoupons(JSON.parse(savedCoupons));
     }
   };
 
   const fetchReviews = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/reviews`, { timeout: 10000 });
-      if (Array.isArray(res.data)) {
-        setAllReviews(res.data);
-      }
+      if (Array.isArray(res.data)) setAllReviews(res.data);
     } catch (err) {
       console.error('Error fetching reviews:', err);
     }
@@ -277,15 +298,11 @@ function App() {
   const fetchLiveOrders = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/orders`, { timeout: 10000 });
-      if (Array.isArray(res.data)) {
-        setAllStoreOrders(res.data);
-      }
+      if (Array.isArray(res.data)) setAllStoreOrders(res.data);
     } catch (err) {
       console.error('Error fetching live orders:', err);
       const savedOrders = localStorage.getItem('myOrders');
-      if (savedOrders) {
-        setAllStoreOrders(JSON.parse(savedOrders));
-      }
+      if (savedOrders) setAllStoreOrders(JSON.parse(savedOrders));
     }
   };
 
@@ -353,12 +370,10 @@ function App() {
     }
   }, [heroBanners.length]);
 
-  // 🌓 THEME SYNC WITH LOCALSTORAGE
   useEffect(() => {
     localStorage.setItem('techstore_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  // 🟢 AUTO-PERSIST WISHLIST & CART IN LOCALSTORAGE
   useEffect(() => {
     localStorage.setItem('techstore_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
@@ -367,7 +382,6 @@ function App() {
     localStorage.setItem('techstore_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // INITIAL LOAD USER DATA
   useEffect(() => {
     if (user) {
       setShippingName(user.name || '');
@@ -388,7 +402,6 @@ function App() {
     }
   }, [user]);
 
-  // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA DIRECTLY TO MONGODB ATLAS
   const syncUserUserDataToDatabase = async (updatedCart, updatedWishlist) => {
     const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
     const currentCart = updatedCart !== undefined ? updatedCart : cart;
@@ -1059,8 +1072,8 @@ function App() {
         </div>
       </div>
 
-      {/* 🟢 📲 SMART ANDROID APP DOWNLOAD POP-UP (TRIGGERED ON VISIT) */}
-      {showAppDownloadModal && (
+      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (WITH DIRECT 1-CLICK PWA INSTALLATION) */}
+      {showAppDownloadModal && !isAppInstalled && (
         <div className="modal show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1080 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center p-3 p-md-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
@@ -1070,24 +1083,22 @@ function App() {
               </div>
 
               <div className="my-2">
-                <div className="d-inline-flex p-3 rounded-circle bg-warning bg-opacity-25 mb-2 shadow-sm">
-                  <i className="bi bi-phone-fill text-warning fs-1"></i>
+                <div className="d-inline-flex p-3 rounded-4 bg-warning bg-opacity-25 mb-2 shadow-sm border border-warning">
+                  <img src="https://cdn-icons-png.flaticon.com/512/3081/3081559.png" alt="App Icon" width="56" height="56" className="rounded-3 shadow-sm" />
                 </div>
-                <h5 className="fw-bold mb-1">Get TechStore Mobile App!</h5>
+                <h5 className="fw-bold mb-1">Install TechStore Official App</h5>
                 <p className={`small mb-3 ${subTextClass}`}>
-                  Shop faster, get instant delivery tracking, and enjoy exclusive <b>20% App-Only Discounts</b>.
+                  Shop faster with our 1-click home screen app. Enjoy instant notifications & exclusive <b>20% App-Only Deals</b>!
                 </p>
 
-                <a 
-                  href={APP_DOWNLOAD_URL} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="btn btn-warning w-100 fw-bold py-2 rounded-pill shadow-sm text-dark d-flex align-items-center justify-content-center gap-2 mb-2"
-                  onClick={() => setShowAppDownloadModal(false)}
+                <button 
+                  type="button"
+                  onClick={handleTriggerAppInstall}
+                  className="btn btn-warning w-100 fw-bold py-2 rounded-pill shadow d-flex align-items-center justify-content-center gap-2 mb-2 text-dark"
                 >
                   <i className="bi bi-download fs-5"></i>
-                  <span>Download Android App (.APK)</span>
-                </a>
+                  <span>Install App on Device (1-Click)</span>
+                </button>
 
                 <button 
                   type="button" 
@@ -1999,27 +2010,26 @@ function App() {
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
           
-          {/* APP DOWNLOAD HIGHLIGHT BANNER IN FOOTER */}
+          {/* 1-CLICK NATIVE PWA INSTALL HIGHLIGHT BANNER IN FOOTER */}
           <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
             <div className="col-md-7 text-start">
               <div className="d-flex align-items-center gap-2 mb-1">
-                <i className="bi bi-phone text-warning fs-3"></i>
-                <h5 className="fw-bold text-warning m-0">Experience TechStore on Mobile App</h5>
+                <img src="https://cdn-icons-png.flaticon.com/512/3081/3081559.png" alt="App" width="36" height="36" className="rounded-2 shadow-sm" />
+                <h5 className="fw-bold text-warning m-0">Experience TechStore Official App</h5>
               </div>
               <p className="small text-white-50 m-0">
-                Download our official Android App for lightning-fast checkout, real-time push notifications & exclusive mobile deals.
+                Install our official mobile app directly to your home screen with a single click. Fast, secure, and offline-ready!
               </p>
             </div>
             <div className="col-md-5 text-md-end mt-3 mt-md-0">
-              <a 
-                href={APP_DOWNLOAD_URL} 
-                target="_blank" 
-                rel="noreferrer"
+              <button 
+                type="button"
+                onClick={handleTriggerAppInstall}
                 className="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow d-inline-flex align-items-center gap-2 text-dark"
               >
-                <i className="bi bi-android2 fs-5"></i>
-                <span>Click Here to Download App (.APK)</span>
-              </a>
+                <i className="bi bi-phone-fill fs-5"></i>
+                <span>Click Here to Install App (1-Click)</span>
+              </button>
             </div>
           </div>
 
@@ -2036,7 +2046,7 @@ function App() {
                 <li><a href="#home" className="text-white-50 text-decoration-none" onClick={handleResetToAllCatalog}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
-                <li><a href={APP_DOWNLOAD_URL} target="_blank" rel="noreferrer" className="text-warning text-decoration-none fw-bold">📲 Download Mobile App</a></li>
+                <li><span style={{ cursor: 'pointer' }} onClick={handleTriggerAppInstall} className="text-warning fw-bold">📲 Install Mobile App</span></li>
               </ul>
             </div>
             <div className="col-md-4">
