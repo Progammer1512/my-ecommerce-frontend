@@ -27,15 +27,43 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [cart, setCart] = useState([]);
+
+  // 🟢 PERSISTENT CART STATE (SURVIVES HARD REFRESH)
+  const [cart, setCart] = useState(() => {
+    try {
+      const savedCart = localStorage.getItem('techstore_cart');
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [showCartModal, setShowCartModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
-  const [user, setUser] = useState(null);
+
+  // 🟢 USER PROFILE STATE
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('googleUser');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
-  // WISHLIST & MULTIPLE ADDRESSES STATES
-  const [wishlist, setWishlist] = useState([]);
+  // 🟢 PERSISTENT WISHLIST STATE (SURVIVES HARD REFRESH)
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const savedWish = localStorage.getItem('techstore_wishlist');
+      return savedWish ? JSON.parse(savedWish) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [newAddressForm, setNewAddressForm] = useState({
     title: 'Home',
@@ -179,7 +207,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // STATIC BUTTON ACTION: ALWAYS RESET TO ALL PRODUCTS CATALOG
   const handleResetToAllCatalog = () => {
     setSelectedProductDetail(null);
     setNavigationStack([]);
@@ -187,7 +214,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // 🟢 FETCH COUPONS FILTERED BY TARGETED USER EMAIL
+  // FETCH COUPONS
   const fetchCoupons = async () => {
     try {
       const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
@@ -230,7 +257,6 @@ function App() {
     }
   };
 
-  // FETCH BANNERS FROM MONGODB
   const fetchBanners = async (isInitial = false) => {
     try {
       if (isInitial) setBannersLoading(true);
@@ -269,14 +295,10 @@ function App() {
     fetchCoupons();
 
     const savedRev = localStorage.getItem('submittedReviews');
-    if (savedRev) {
-      setSubmittedReviews(JSON.parse(savedRev));
-    }
+    if (savedRev) setSubmittedReviews(JSON.parse(savedRev));
 
     const savedAddrs = localStorage.getItem('userSavedAddresses');
-    if (savedAddrs) {
-      setSavedAddresses(JSON.parse(savedAddrs));
-    }
+    if (savedAddrs) setSavedAddresses(JSON.parse(savedAddrs));
   }, []);
 
   useEffect(() => {
@@ -299,66 +321,89 @@ function App() {
     }
   }, [heroBanners.length]);
 
-  // 🟢 INITIAL LOAD / ACCOUNT SWITCH ISOLATION FIX
+  // 🟢 AUTO-PERSIST WISHLIST & CART IN LOCALSTORAGE
   useEffect(() => {
-    const savedGoogleUser = localStorage.getItem('googleUser');
-    if (savedGoogleUser) {
-      const parsed = JSON.parse(savedGoogleUser);
-      setUser(parsed);
-      setShippingName(parsed.name || '');
-      setShippingAddress(parsed.address || '');
-      setShippingPhone(parsed.mobile || '');
+    localStorage.setItem('techstore_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  useEffect(() => {
+    localStorage.setItem('techstore_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  // INITIAL LOAD USER DATA
+  useEffect(() => {
+    if (user) {
+      setShippingName(user.name || '');
+      setShippingAddress(user.address || '');
+      setShippingPhone(user.mobile || '');
       setProfileFormData({
-        name: parsed.name || '',
-        mobile: parsed.mobile || '',
-        address: parsed.address || '',
-        pincode: parsed.pincode || ''
+        name: user.name || '',
+        mobile: user.mobile || '',
+        address: user.address || '',
+        pincode: user.pincode || ''
       });
-      // Load specific user's wishlist and cart from session/database profile response
-      if (parsed.wishlist && Array.isArray(parsed.wishlist)) {
-        setWishlist(parsed.wishlist);
-      } else {
-        setWishlist([]);
+      if (user.wishlist && Array.isArray(user.wishlist) && user.wishlist.length > 0 && wishlist.length === 0) {
+        setWishlist(user.wishlist);
       }
-      if (parsed.cart && Array.isArray(parsed.cart)) {
-        setCart(parsed.cart);
-      } else {
-        setCart([]);
+      if (user.cart && Array.isArray(user.cart) && user.cart.length > 0 && cart.length === 0) {
+        setCart(user.cart);
       }
-    } else {
-      setUser(null);
-      setWishlist([]);
-      setCart([]);
     }
-  }, []);
+  }, [user]);
 
   // 🟢 HELPER: SYNC USER CART AND WISHLIST DATA DIRECTLY TO MONGODB ATLAS
   const syncUserUserDataToDatabase = async (updatedCart, updatedWishlist) => {
     const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
+    const currentCart = updatedCart !== undefined ? updatedCart : cart;
+    const currentWishlist = updatedWishlist !== undefined ? updatedWishlist : wishlist;
+
+    // Always update localStorage first
+    if (updatedCart !== undefined) localStorage.setItem('techstore_cart', JSON.stringify(updatedCart));
+    if (updatedWishlist !== undefined) localStorage.setItem('techstore_wishlist', JSON.stringify(updatedWishlist));
+
     if (!activeUser || !activeUser.email) return;
 
     try {
+      // 1. Direct Wishlist Endpoint Sync
+      if (updatedWishlist !== undefined) {
+        axios.post(`${BASE_URL}/api/auth/wishlist`, {
+          email: activeUser.email.toLowerCase().trim(),
+          wishlist: updatedWishlist,
+          name: activeUser.name || '',
+          mobile: activeUser.mobile || ''
+        }).catch(() => {});
+      }
+
+      // 2. Direct Cart Endpoint Sync
+      if (updatedCart !== undefined) {
+        axios.post(`${BASE_URL}/api/auth/cart`, {
+          email: activeUser.email.toLowerCase().trim(),
+          cart: updatedCart,
+          name: activeUser.name || '',
+          mobile: activeUser.mobile || ''
+        }).catch(() => {});
+      }
+
+      // 3. Full Profile Sync
       const res = await axios.put(`${BASE_URL}/api/auth/profile`, {
         email: activeUser.email.toLowerCase().trim(),
         name: activeUser.name || '',
         mobile: activeUser.mobile || '',
         address: activeUser.address || '',
         pincode: activeUser.pincode || '',
-        cart: updatedCart !== undefined ? updatedCart : cart,
-        wishlist: updatedWishlist !== undefined ? updatedWishlist : wishlist
+        cart: currentCart,
+        wishlist: currentWishlist
       });
       
-      // Keep local storage synced with latest user object
       if (res.data && res.data.user) {
-        localStorage.setItem('googleUser', JSON.stringify(res.data.user));
+        localStorage.setItem('googleUser', JSON.stringify({ ...activeUser, ...res.data.user }));
       }
-      console.log('✅ Synchronized Cart & Wishlist to MongoDB Database successfully!');
     } catch (err) {
-      console.error('Background Sync Error:', err);
+      console.warn('Background Sync Notice:', err.message);
     }
   };
 
-  // 🟢 WISHLIST TOGGLE HELPER (WITH ACCOUNT ISOLATION)
+  // 🟢 WISHLIST TOGGLE (SURVIVES REFRESH 100%)
   const toggleWishlist = (product) => {
     let updated;
     if (wishlist.some(item => item._id === product._id)) {
@@ -370,7 +415,6 @@ function App() {
     syncUserUserDataToDatabase(undefined, updated);
   };
 
-  // ADD NEW MULTIPLE SHIPPING ADDRESS HELPER
   const handleAddNewAddress = (e) => {
     e.preventDefault();
     if (!newAddressForm.name || !newAddressForm.address || !newAddressForm.phone) {
@@ -392,27 +436,13 @@ function App() {
   };
 
   // TOUCH SWIPE LOGIC FOR BANNER
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
+  const handleTouchStart = (e) => { touchStartX.current = e.targetTouches[0].clientX; };
+  const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; };
   const handleTouchEnd = () => {
     if (!touchStartX.current || !touchEndX.current || heroBanners.length <= 1) return;
     const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 40;
-    const isRightSwipe = distance < -40;
-
-    if (isLeftSwipe) {
-      setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
-    }
-    if (isRightSwipe) {
-      setCurrentSlide((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
-    }
-
+    if (distance > 40) setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
+    if (distance < -40) setCurrentSlide((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
     touchStartX.current = 0;
     touchEndX.current = 0;
   };
@@ -422,19 +452,18 @@ function App() {
     try {
       const res = await axios.post(`${BASE_URL}/api/auth/signup`, signupData);
       alert('🎉 Registration successful! Welcome to TechStore.');
-      setUser(res.data.user);
-      setShippingName(res.data.user.name || '');
-      setShippingAddress(res.data.user.address || '');
-      setShippingPhone(res.data.user.mobile || '');
+      const newUser = res.data.user;
+      setUser(newUser);
+      setShippingName(newUser.name || '');
+      setShippingAddress(newUser.address || '');
+      setShippingPhone(newUser.mobile || '');
       setProfileFormData({
-        name: res.data.user.name || '',
-        mobile: res.data.user.mobile || '',
-        address: res.data.user.address || '',
-        pincode: res.data.user.pincode || ''
+        name: newUser.name || '',
+        mobile: newUser.mobile || '',
+        address: newUser.address || '',
+        pincode: newUser.pincode || ''
       });
-      setWishlist(res.data.user.wishlist || []);
-      setCart(res.data.user.cart || []);
-      localStorage.setItem('googleUser', JSON.stringify(res.data.user));
+      localStorage.setItem('googleUser', JSON.stringify(newUser));
       setShowSignupModal(false);
       setSignupData({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
     } catch (err) { 
@@ -442,7 +471,6 @@ function App() {
     }
   };
 
-  // 🟢 LOGIN WITH ACCOUNT WISHLIST ISOLATION
   const handleEmailLoginSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -459,9 +487,8 @@ function App() {
         address: loggedUser.address || '',
         pincode: loggedUser.pincode || ''
       });
-      // 🟢 Immediately load this specific user's database wishlist & cart
-      setWishlist(loggedUser.wishlist || []);
-      setCart(loggedUser.cart || []);
+      if (loggedUser.wishlist && loggedUser.wishlist.length > 0) setWishlist(loggedUser.wishlist);
+      if (loggedUser.cart && loggedUser.cart.length > 0) setCart(loggedUser.cart);
       localStorage.setItem('googleUser', JSON.stringify(loggedUser));
       setShowLoginModal(false);
       setLoginData({ email: '', password: '' });
@@ -469,7 +496,6 @@ function App() {
     } catch (err) { alert(err.response?.data?.message || 'Login failed.'); }
   };
 
-  // UPDATE USER PROFILE IN MONGODB & LOCALSTORAGE
   const handleUpdateProfileSubmit = async (e) => {
     e.preventDefault();
     if (!user || !user.email) return;
@@ -480,7 +506,9 @@ function App() {
         name: profileFormData.name,
         mobile: profileFormData.mobile,
         address: profileFormData.address,
-        pincode: profileFormData.pincode
+        pincode: profileFormData.pincode,
+        cart: cart,
+        wishlist: wishlist
       });
 
       const updatedUser = { ...user, ...res.data.user };
@@ -497,18 +525,13 @@ function App() {
     }
   };
 
-  // INSTANT DELETE ACCOUNT FROM MONGODB & LOCALSTORAGE
   const handleDeleteAccount = async () => {
     if (!user || !user.email) return;
-
     const confirmDelete = window.confirm('⚠️ Are you sure you want to PERMANENTLY DELETE your account?\nThis action cannot be undone!');
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`${BASE_URL}/api/auth/profile`, {
-        data: { email: user.email }
-      });
-
+      await axios.delete(`${BASE_URL}/api/auth/profile`, { data: { email: user.email } });
       alert('🗑️ Your account has been permanently deleted from MongoDB.');
       handleGoogleLogout();
       setShowAccountSettingsModal(false);
@@ -519,7 +542,6 @@ function App() {
     }
   };
 
-  // 🟢 BULLET-PROOF GOOGLE LOGIN WITH INSTANT STATE AND BACKEND SYNC
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       if (!credentialResponse?.credential) {
@@ -528,8 +550,6 @@ function App() {
       }
 
       const decodedUser = jwtDecode(credentialResponse.credential);
-      
-      // Instantly prepare active user profile
       const localUserProfile = {
         name: decodedUser.name || 'Google User',
         email: decodedUser.email ? decodedUser.email.toLowerCase().trim() : '',
@@ -539,11 +559,10 @@ function App() {
         mobile: '',
         address: '',
         pincode: '',
-        wishlist: [],
-        cart: []
+        wishlist: wishlist,
+        cart: cart
       };
 
-      // Set immediate local state so UI activates instantly
       setUser(localUserProfile);
       setShippingName(localUserProfile.name);
       setProfileFormData({
@@ -554,7 +573,6 @@ function App() {
       });
       localStorage.setItem('googleUser', JSON.stringify(localUserProfile));
 
-      // Synchronize with backend API safely
       try {
         const res = await axios.post(`${BASE_URL}/api/auth/google`, {
           name: localUserProfile.name,
@@ -566,8 +584,8 @@ function App() {
         if (res.data && res.data.user) {
           const dbUser = { ...localUserProfile, ...res.data.user };
           setUser(dbUser);
-          setWishlist(dbUser.wishlist || []);
-          setCart(dbUser.cart || []);
+          if (dbUser.wishlist && dbUser.wishlist.length > 0) setWishlist(dbUser.wishlist);
+          if (dbUser.cart && dbUser.cart.length > 0) setCart(dbUser.cart);
           localStorage.setItem('googleUser', JSON.stringify(dbUser));
         }
       } catch (backendErr) {
@@ -586,12 +604,9 @@ function App() {
     alert("Google Sign-In was cancelled or failed.");
   };
 
-  // 🟢 LOGOUT WITH COMPLETE STATE CLEARING
   const handleGoogleLogout = () => {
     googleLogout();
     setUser(null);
-    setWishlist([]);
-    setCart([]);
     setShowProfileDrawer(false);
     setShowEditProfileModal(false);
     setShowAccountSettingsModal(false);
@@ -625,21 +640,13 @@ function App() {
     }
   };
 
-  // HELPER: GET 3 VISIBLE PAGE NUMBERS
   const getVisiblePageNumbers = () => {
-    if (totalPages <= 3) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    if (currentPage === 1) {
-      return [1, 2, 3];
-    }
-    if (currentPage === totalPages) {
-      return [totalPages - 2, totalPages - 1, totalPages];
-    }
+    if (totalPages <= 3) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage === 1) return [1, 2, 3];
+    if (currentPage === totalPages) return [totalPages - 2, totalPages - 1, totalPages];
     return [currentPage - 1, currentPage, currentPage + 1];
   };
 
-  // 🟢 ADD TO CART WITH MONGODB SYNC
   const addToCart = (product) => {
     const prodStock = getProductStock(product);
     if (prodStock <= 0) {
@@ -784,9 +791,7 @@ function App() {
         try {
           await axios.post(`${BASE_URL}/api/coupons/use`, { code: appliedCoupon.code });
           fetchCoupons();
-        } catch (err) {
-          console.log('Coupon used locally');
-        }
+        } catch (err) {}
       }
 
       fetchLiveOrders();
@@ -836,7 +841,6 @@ function App() {
     const updatedRev = { ...submittedReviews, [selectedOrderForReview._id]: reviewData };
     setSubmittedReviews(updatedRev);
     localStorage.setItem('submittedReviews', JSON.stringify(updatedRev));
-
     setShowReviewModal(false);
   };
 
@@ -950,7 +954,7 @@ function App() {
             <div id="header-right-slot"></div>
           </div>
 
-          {/* MIDDLE ROW: PROFILE BUTTON & CART BUTTON DIRECTLY OPPOSITE TO IT */}
+          {/* MIDDLE ROW: PROFILE BUTTON & CART BUTTON */}
           <div className="d-flex justify-content-between align-items-center w-100 gap-2 mb-2">
             
             {user ? (
@@ -979,7 +983,7 @@ function App() {
               </div>
             )}
 
-            {/* CART BUTTON PLACED DIRECTLY OPPOSITE TO PROFILE BUTTON */}
+            {/* CART BUTTON */}
             <button 
               className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
               onClick={() => setShowCartModal(true)}
@@ -1008,13 +1012,12 @@ function App() {
         </div>
       </nav>
 
-      {/* CLICKABLE PROFILE DRAWER MODAL */}
+      {/* PROFILE DRAWER MODAL */}
       {showProfileDrawer && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1055 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
               
-              {/* Header with User Info */}
               <div className="modal-header bg-dark text-white d-flex align-items-center gap-3 p-3">
                 <img 
                   src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
@@ -1030,10 +1033,7 @@ function App() {
                 <button type="button" className="btn-close btn-close-white ms-auto" onClick={() => setShowProfileDrawer(false)}></button>
               </div>
 
-              {/* Drawer Menu List */}
               <div className="modal-body p-2 bg-light d-flex flex-column gap-2">
-                
-                {/* 1. MY PROFILE */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
@@ -1045,7 +1045,6 @@ function App() {
                   <i className="bi bi-chevron-right text-muted small"></i>
                 </button>
 
-                {/* 2. MY ORDERS */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
@@ -1063,7 +1062,6 @@ function App() {
                   ) : <i className="bi bi-chevron-right text-muted small"></i>}
                 </button>
 
-                {/* 3. ACCOUNT SETTINGS */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
@@ -1075,7 +1073,6 @@ function App() {
                   <i className="bi bi-chevron-right text-muted small"></i>
                 </button>
 
-                {/* 4. PRIVACY POLICY */}
                 <button 
                   className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
                   onClick={() => {
@@ -1086,10 +1083,8 @@ function App() {
                   <span><i className="bi bi-shield-lock-fill text-info me-2 fs-5"></i>Privacy Policy</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
                 </button>
-
               </div>
 
-              {/* Bottom Logout Action */}
               <div className="modal-footer bg-light border-top p-2">
                 <button 
                   className="btn btn-danger w-100 fw-bold py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
@@ -1105,7 +1100,7 @@ function App() {
         </div>
       )}
 
-      {/* 1. EDIT PROFILE MODAL */}
+      {/* EDIT PROFILE MODAL */}
       {showEditProfileModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1171,7 +1166,7 @@ function App() {
         </div>
       )}
 
-      {/* 2. COMPLETE RE-ORDERED ACCOUNT SETTINGS MODAL */}
+      {/* ACCOUNT SETTINGS MODAL */}
       {showAccountSettingsModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1254,7 +1249,6 @@ function App() {
                     </button>
                   </div>
 
-                  {/* ADD NEW ADDRESS FORM */}
                   {showAddAddressForm && (
                     <form onSubmit={handleAddNewAddress} className="bg-white p-3 rounded border mb-3 shadow-sm">
                       <h6 className="fw-bold text-primary mb-2 small">Add Shipping Location Details:</h6>
@@ -1283,7 +1277,6 @@ function App() {
                     </form>
                   )}
 
-                  {/* SAVED ADDRESSES LIST */}
                   {savedAddresses.length === 0 ? (
                     <small className="text-muted d-block py-1">No multiple addresses added yet. Primary default address is used for checkout.</small>
                   ) : (
@@ -1302,7 +1295,7 @@ function App() {
                   )}
                 </div>
 
-                {/* 5. DANGER ZONE (PERMANENT DELETE ACCOUNT AT BOTTOM) */}
+                {/* 5. DANGER ZONE */}
                 <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-2">
                   <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
                   <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, saved addresses, and account history from MongoDB.</p>
@@ -1321,7 +1314,7 @@ function App() {
         </div>
       )}
 
-      {/* 3. PRIVACY POLICY MODAL */}
+      {/* PRIVACY POLICY MODAL */}
       {showPrivacyPolicyModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1354,7 +1347,7 @@ function App() {
         </div>
       )}
 
-      {/* 🍔 CATEGORY HAMBURGER MENU MODAL */}
+      {/* CATEGORY MENU MODAL */}
       {showCategoryMenu && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-sm">
@@ -1407,7 +1400,6 @@ function App() {
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
                 <div className="p-3 border rounded-3 bg-white shadow-sm position-relative">
-                  {/* WISHLIST HEART BUTTON ON PRODUCT DETAIL */}
                   <button 
                     className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
                     style={{ width: '40px', height: '40px', zIndex: 10 }}
@@ -1608,7 +1600,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* DYNAMIC MONGODB BANNERS WITH FIXED TOP-LEFT TEXT ALIGNMENT & BLURRED BACKDROP */}
+          {/* BANNERS */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
@@ -1630,7 +1622,6 @@ function App() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                {/* DYNAMIC BLURRED IMAGE SHADOW BACKGROUND */}
                 {currentBanner.img && (
                   <div 
                     className="position-absolute top-0 start-0 w-100 h-100"
@@ -1645,7 +1636,6 @@ function App() {
                   />
                 )}
 
-                {/* FIXED ALIGN-ITEMS-START TO LOCK TEXT TO TOP-LEFT CORNER */}
                 <div className="row align-items-start position-relative z-1 g-3">
                   <div className="col-7 col-md-8 d-flex flex-column align-items-start justify-content-start text-start" style={{ minHeight: '110px' }}>
                     {currentBanner.badge ? (
@@ -1661,7 +1651,6 @@ function App() {
                     )}
                   </div>
 
-                  {/* ALWAYS VISIBLE IMAGE ON MOBILE & DESKTOP BROWSERS */}
                   {currentBanner.img && (
                     <div className="col-5 col-md-4 text-end align-self-center">
                       <img 
@@ -1690,6 +1679,7 @@ function App() {
             ) : null}
           </div>
 
+          {/* MAIN PRODUCTS CATALOG */}
           <div className="container py-2 px-2 px-md-3 mb-4">
             <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
               <h4 className="fw-bold m-0 fs-5">
@@ -1795,7 +1785,7 @@ function App() {
                   })}
                 </div>
 
-                {/* SMART COMPACT PAGINATION */}
+                {/* PAGINATION */}
                 {totalPages > 1 && (
                   <div className="d-flex justify-content-center align-items-center mt-4 mb-4">
                     <nav>
@@ -1840,7 +1830,7 @@ function App() {
         </>
       )}
 
-      {/* FOOTER SECTION AT THE BOTTOM TO EXTEND PAGE HEIGHT */}
+      {/* FOOTER */}
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
           <div className="row g-4">
@@ -1871,7 +1861,7 @@ function App() {
         </div>
       </footer>
 
-      {/* FLOATING COMPACT AI HELPER ASSISTANT */}
+      {/* FLOATING AI ASSISTANT */}
       <div className="position-fixed bottom-0 end-0 m-2 m-md-3 z-3">
         {showChatbot ? (
           <div className="card shadow-lg border-0" style={{ width: '280px', height: '360px' }}>
@@ -2023,7 +2013,7 @@ function App() {
         </div>
       )}
 
-      {/* CHECKOUT MODAL WITH SAVED ADDRESS SELECTOR */}
+      {/* CHECKOUT MODAL */}
       {showCheckoutModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -2304,8 +2294,6 @@ function App() {
                 <div className="mb-2">
                   <input type="email" className="form-control" placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} />
                 </div>
-                
-                {/* PASSWORD FIELD WITH EYE TOGGLE ICON */}
                 <div className="mb-2 input-group">
                   <input 
                     type={showSignupPassword ? "text" : "password"} 
@@ -2323,7 +2311,6 @@ function App() {
                     <i className={`bi ${showSignupPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
                   </button>
                 </div>
-
                 <div className="mb-2">
                   <input type="tel" className="form-control" placeholder="Mobile Number" required value={signupData.mobile} onChange={(e) => setSignupData({...signupData, mobile: e.target.value})} />
                 </div>
@@ -2353,8 +2340,6 @@ function App() {
                 <div className="mb-3">
                   <input type="email" className="form-control" placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} />
                 </div>
-                
-                {/* PASSWORD FIELD WITH EYE TOGGLE ICON */}
                 <div className="mb-3 input-group">
                   <input 
                     type={showLoginPassword ? "text" : "password"} 
@@ -2372,7 +2357,6 @@ function App() {
                     <i className={`bi ${showLoginPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
                   </button>
                 </div>
-
                 <button type="submit" className="btn btn-dark w-100 fw-bold py-2 text-warning">Sign In</button>
               </form>
             </div>
