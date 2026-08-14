@@ -47,6 +47,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 16;
 
   // 📲 NATIVE PWA APP INSTALL PROMPT STATES
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -171,19 +173,16 @@ function App() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponMessage, setCouponCodeMessage] = useState('');
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 16;
-
   const [shippingName, setShippingName] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
   // =========================================================================
-  // 🌟 UNIVERSAL NAVIGATION STACK & VIEW STATE MANAGER
+  // 🌟 UNIVERSAL NAVIGATION & PAGINATION STACK MANAGER
   // =========================================================================
   const applyViewState = (state) => {
-    // 1. Reset all modals and details first
+    // 1. Close all modals and product details first
     setShowAppDownloadModal(false);
     setShowCartModal(false);
     setShowCheckoutModal(false);
@@ -199,12 +198,22 @@ function App() {
     setShowReviewModalReturn(false);
     setSelectedProductDetail(null);
 
+    // Restore exact page, category and search
+    if (state && typeof state.page === 'number') {
+      setCurrentPage(state.page);
+    }
+    if (state && state.category !== undefined) {
+      setSelectedCategory(state.category);
+    }
+    if (state && state.search !== undefined) {
+      setSearchTerm(state.search);
+    }
+
     if (!state || !state.view || state.view === 'HOME') {
-      window.scrollTo({ top: 0, behavior: 'instant' });
       return;
     }
 
-    // 2. Open the exact view stored in history state
+    // 2. Open the exact view
     switch (state.view) {
       case 'PRODUCT_DETAIL':
         setSelectedProductDetail(state.product);
@@ -257,7 +266,13 @@ function App() {
   };
 
   const navigateToView = (viewName, extraData = {}) => {
-    const newState = { view: viewName, ...extraData };
+    const newState = {
+      view: viewName,
+      page: extraData.page !== undefined ? extraData.page : currentPage,
+      category: extraData.category !== undefined ? extraData.category : selectedCategory,
+      search: extraData.search !== undefined ? extraData.search : searchTerm,
+      ...extraData
+    };
     window.history.pushState(newState, '', window.location.href);
     applyViewState(newState);
   };
@@ -266,16 +281,24 @@ function App() {
     window.history.back();
   };
 
+  // 🟢 SMART PAGINATION HANDLER WITH BROWSER BACK INTEGRATION
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
+      navigateToView('HOME', { page: pageNumber });
+      window.scrollTo({ top: 350, behavior: 'smooth' });
+    }
+  };
+
   // 📲 UNIVERSAL POPSTATE (BACK GESTURE) LISTENER
   useEffect(() => {
     if (!window.history.state || !window.history.state.view) {
-      window.history.replaceState({ view: 'HOME' }, '', window.location.href);
+      window.history.replaceState({ view: 'HOME', page: 1, category: 'All', search: '' }, '', window.location.href);
     } else {
       applyViewState(window.history.state);
     }
 
     const handlePopState = (event) => {
-      applyViewState(event.state || { view: 'HOME' });
+      applyViewState(event.state || { view: 'HOME', page: 1, category: 'All', search: '' });
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -283,11 +306,11 @@ function App() {
   }, []);
 
   const handleOpenProductDetail = (p) => {
-    navigateToView('PRODUCT_DETAIL', { product: p });
+    navigateToView('PRODUCT_DETAIL', { product: p, page: currentPage });
   };
 
   const handleResetToAllCatalog = () => {
-    navigateToView('HOME');
+    navigateToView('HOME', { page: 1, category: 'All', search: '' });
   };
 
   // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
@@ -724,7 +747,7 @@ function App() {
     googleLogout();
     setUser(null);
     localStorage.removeItem('googleUser');
-    navigateToView('HOME');
+    navigateToView('HOME', { page: 1, category: 'All', search: '' });
     alert("Logged out from Account.");
   };
 
@@ -752,14 +775,7 @@ function App() {
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      window.scrollTo({ top: 350, behavior: 'smooth' });
-    }
-  };
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
   const getVisiblePageNumbers = () => {
     if (totalPages <= 3) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -944,7 +960,7 @@ function App() {
       setAppliedCoupon(null);
       setCouponCode('');
       setCouponCodeMessage('');
-      navigateToView('HOME');
+      navigateToView('HOME', { page: 1, category: 'All', search: '' });
     } catch (err) {
       console.error('Order Push Error:', err);
       alert('Order Placement Failed: ' + (err.response?.data?.message || err.message));
@@ -1155,11 +1171,15 @@ function App() {
                 className={`form-control border-0 shadow-none py-0 ps-1 pe-2 small ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`} 
                 placeholder="Search products..." 
                 value={searchTerm} 
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); handleResetToAllCatalog(); }} 
+                onChange={(e) => { 
+                  const val = e.target.value;
+                  setSearchTerm(val); 
+                  navigateToView('HOME', { page: 1, search: val });
+                }} 
                 style={{ fontSize: '13px' }}
               />
               {searchTerm && (
-                <button className="btn btn-sm btn-link text-secondary text-decoration-none py-0 pe-2" onClick={() => setSearchTerm('')}>✕</button>
+                <button className="btn btn-sm btn-link text-secondary text-decoration-none py-0 pe-2" onClick={() => { setSearchTerm(''); navigateToView('HOME', { page: 1, search: '' }); }}>✕</button>
               )}
             </div>
           </div>
@@ -1601,8 +1621,7 @@ function App() {
                       }`}
                       onClick={() => {
                         setSelectedCategory(cat);
-                        setCurrentPage(1);
-                        handleResetToAllCatalog();
+                        navigateToView('HOME', { page: 1, category: cat });
                       }}
                     >
                       <span>📦 {cat}</span>
@@ -1934,7 +1953,7 @@ function App() {
               </h4>
               
               {selectedCategory !== 'All' && (
-                <button className="btn btn-outline-secondary btn-sm fw-bold rounded-pill py-0 px-2" style={{ fontSize: '12px' }} onClick={() => setSelectedCategory('All')}>
+                <button className="btn btn-outline-secondary btn-sm fw-bold rounded-pill py-0 px-2" style={{ fontSize: '12px' }} onClick={() => navigateToView('HOME', { page: 1, category: 'All' })}>
                   Showing: {selectedCategory} ✕ (Show All)
                 </button>
               )}
@@ -2049,7 +2068,7 @@ function App() {
                   })}
                 </div>
 
-                {/* PAGINATION */}
+                {/* 🟢 SMART PAGINATION */}
                 {totalPages > 1 && (
                   <div className="d-flex justify-content-center align-items-center mt-4 mb-4">
                     <nav>
@@ -2181,7 +2200,7 @@ function App() {
         )}
       </div>
 
-      {/* 🟢 🛒 ENHANCED CART MODAL (WITH PRODUCT IMAGES & 1-CLICK VIEW DETAILS) */}
+      {/* 🟢 🛒 ENHANCED CART MODAL */}
       {showCartModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -2209,7 +2228,6 @@ function App() {
                         <tbody>
                           {cart.map((item) => (
                             <tr key={item._id}>
-                              {/* 🟢 PRODUCT IMAGE THUMBNAIL + NAME (CLICKABLE TO OPEN PRODUCT DETAILS) */}
                               <td>
                                 <div 
                                   className="d-flex align-items-center gap-2" 
@@ -2568,7 +2586,7 @@ function App() {
       {/* RETURN MODAL */}
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-danger text-white">
                 <h5 className="modal-title fw-bold">🔄 Request Order Return / Replacement</h5>
