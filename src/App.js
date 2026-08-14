@@ -278,7 +278,7 @@ function App() {
     window.history.back();
   };
 
-  // 🟢 SMART PAGINATION HANDLER
+  // 🟢 HORIZONTAL SWIPEABLE PAGE CHANGE
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
       navigateToView('HOME', { page: pageNumber });
@@ -773,47 +773,6 @@ function App() {
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
-
-  // 🟢 SMART PAGINATION NUMBERS GENERATOR (Always includes Page 1 & jumps)
-  const getPaginationItems = () => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-
-    const items = [];
-    const prev = currentPage - 1;
-    const next = currentPage + 1;
-
-    // 1. Page 1 hamesha dikhega
-    items.push(1);
-
-    // 2. Left Ellipsis agar current page 3 se bada hai
-    if (currentPage > 3) {
-      items.push('...');
-    }
-
-    // 3. Middle Page Numbers (Previous, Current, Next)
-    const start = Math.max(2, prev);
-    const end = Math.min(totalPages - 1, next);
-
-    for (let i = start; i <= end; i++) {
-      if (!items.includes(i)) {
-        items.push(i);
-      }
-    }
-
-    // 4. Right Ellipsis agar current page last se 2 pehle tak hai
-    if (currentPage < totalPages - 2) {
-      items.push('...');
-    }
-
-    // 5. Last Page hamesha dikhega
-    if (!items.includes(totalPages)) {
-      items.push(totalPages);
-    }
-
-    return items;
-  };
 
   const addToCart = (product) => {
     const prodStock = getProductStock(product);
@@ -1703,8 +1662,8 @@ function App() {
                       className="shadow-sm" 
                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                       style={{ 
-                        width: '100%',
-                        height: '100%',
+                        width: '100%', 
+                        height: '100%', 
                         objectFit: 'cover', 
                         borderRadius: '18px' 
                       }}
@@ -2099,93 +2058,47 @@ function App() {
                   })}
                 </div>
 
-                {/* 🟢 SMART PAGINATION (WITH PAGE 1 & DIRECT JUMP BUTTONS) */}
+                {/* 🟢 📱 SLEEK HORIZONTAL SWIPEABLE PAGINATION BOX (RIGHT-TO-LEFT & LEFT-TO-RIGHT) */}
                 {totalPages > 1 && (
-                  <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4 gap-2">
-                    <nav aria-label="Product Catalog Pagination">
-                      <ul className="pagination pagination-md shadow-sm m-0 flex-wrap justify-content-center align-items-center gap-1">
-                        
-                        {/* 1. FIRST PAGE JUMP BUTTON */}
-                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                          <button 
-                            className={`page-link fw-bold px-2 py-1 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1}
-                            title="Go to First Page"
+                  <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
+                    <div 
+                      className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
+                      style={{ 
+                        maxWidth: '100%', 
+                        overflowX: 'auto', 
+                        whiteSpace: 'nowrap',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none'
+                      }}
+                    >
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                        const isActive = currentPage === pageNum;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            className={`btn fw-bold rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm ${
+                              isActive 
+                                ? 'btn-warning text-dark border-warning' 
+                                : darkMode ? 'btn-outline-secondary text-white' : 'btn-light border text-dark'
+                            }`}
+                            style={{ 
+                              minWidth: '42px', 
+                              height: '40px', 
+                              fontSize: '14px',
+                              flexShrink: 0 
+                            }}
+                            onClick={() => handlePageChange(pageNum)}
                           >
-                            « First
+                            {pageNum}
                           </button>
-                        </li>
-
-                        {/* 2. PREVIOUS BUTTON */}
-                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                          <button 
-                            className={`page-link fw-bold px-2 py-1 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            title="Previous Page"
-                          >
-                            ‹ Prev
-                          </button>
-                        </li>
-
-                        {/* 3. DYNAMIC SMART PAGE NUMBERS (ALWAYS SHOWS 1, CURRENT-1, CURRENT, CURRENT+1, LAST) */}
-                        {getPaginationItems().map((item, idx) => {
-                          if (item === '...') {
-                            return (
-                              <li key={`ellipsis-${idx}`} className="page-item disabled">
-                                <span className={`page-link border-0 ${darkMode ? 'bg-dark text-white-50' : 'bg-transparent text-muted'}`}>
-                                  ...
-                                </span>
-                              </li>
-                            );
-                          }
-
-                          return (
-                            <li key={`page-${item}`} className={`page-item ${currentPage === item ? 'active' : ''}`}>
-                              <button 
-                                className={`page-link fw-bold px-3 py-1 ${
-                                  currentPage === item 
-                                    ? 'bg-warning text-dark border-warning' 
-                                    : darkMode ? 'bg-dark text-white border-secondary' : 'text-primary bg-white'
-                                }`} 
-                                onClick={() => handlePageChange(item)}
-                              >
-                                {item}
-                              </button>
-                            </li>
-                          );
-                        })}
-
-                        {/* 4. NEXT BUTTON */}
-                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                          <button 
-                            className={`page-link fw-bold px-2 py-1 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            title="Next Page"
-                          >
-                            Next ›
-                          </button>
-                        </li>
-
-                        {/* 5. LAST PAGE JUMP BUTTON */}
-                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                          <button 
-                            className={`page-link fw-bold px-2 py-1 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages}
-                            title="Go to Last Page"
-                          >
-                            Last »
-                          </button>
-                        </li>
-
-                      </ul>
-                    </nav>
+                        );
+                      })}
+                    </div>
                     
-                    <small className={`${subTextClass} fw-semibold`}>
-                      Showing Page <b>{currentPage}</b> of <b>{totalPages}</b>
+                    <small className={`mt-2 fw-bold small ${subTextClass}`}>
+                      Swipe ↔ Page <b>{currentPage}</b> of <b>{totalPages}</b>
                     </small>
                   </div>
                 )}
@@ -2199,7 +2112,6 @@ function App() {
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
           
-          {/* SHOW ONLY IF RUNNING IN BROWSER, HIDE COMPLETELY INSIDE INSTALLED APP */}
           {!isRunningStandalone() && (
             <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
               <div className="col-md-7 text-start">
