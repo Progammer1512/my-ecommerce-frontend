@@ -3,7 +3,7 @@ import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 // LIVE BACKEND BASE URL (NO TRAILING SLASH)
-const BASE_URL = 'https://my-ecommerce-project-nmfj.onrender.com';
+const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 
 function ProductList() {
   const [products, setProducts] = useState([]);
