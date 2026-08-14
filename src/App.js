@@ -10,6 +10,9 @@ const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 // RELIABLE FALLBACK IMAGE
 const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
 
+// APP DOWNLOAD LINK (Put your actual .apk direct drive/server link here)
+const APP_DOWNLOAD_URL = 'https://my-ecommerce-admin.onrender.com/techstore-app.apk';
+
 // Helper to filter out corrupted local/broken image paths
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -30,6 +33,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // 📲 APP DOWNLOAD POPUP STATE
+  const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
 
   // 🌓 DARK MODE / LIGHT MODE PERSISTENT STATE
   const [darkMode, setDarkMode] = useState(() => {
@@ -159,9 +165,22 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
+  // 📲 SHOW APP DOWNLOAD POPUP AFTER 2 SECONDS (ON FIRST VISIT PER SESSION)
+  useEffect(() => {
+    const hasSeenPopup = sessionStorage.getItem('hasSeenAppPopup');
+    if (!hasSeenPopup) {
+      const timer = setTimeout(() => {
+        setShowAppDownloadModal(true);
+        sessionStorage.setItem('hasSeenAppPopup', 'true');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // SMART BROWSER NATIVE BACK/FORWARD EVENT HANDLER WITH TOP SCROLL
   useEffect(() => {
     const handlePopState = (event) => {
+      if (showAppDownloadModal) { setShowAppDownloadModal(false); return; }
       if (showCartModal) { setShowCartModal(false); return; }
       if (showCheckoutModal) { setShowCheckoutModal(false); return; }
       if (showCategoryMenu) { setShowCategoryMenu(false); return; }
@@ -193,7 +212,7 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [
-    showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
+    showAppDownloadModal, showCartModal, showCheckoutModal, showCategoryMenu, showOrderTracking,
     showSignupModal, showLoginModal, showReviewModal, showReturnModal, showProfileDrawer,
     showEditProfileModal, showAccountSettingsModal, showPrivacyPolicyModal,
     navigationStack
@@ -1040,6 +1059,50 @@ function App() {
         </div>
       </div>
 
+      {/* 🟢 📲 SMART ANDROID APP DOWNLOAD POP-UP (TRIGGERED ON VISIT) */}
+      {showAppDownloadModal && (
+        <div className="modal show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1080 }}>
+          <div className="modal-dialog modal-dialog-centered modal-sm">
+            <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center p-3 p-md-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
+              
+              <div className="d-flex justify-content-end">
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowAppDownloadModal(false)}></button>
+              </div>
+
+              <div className="my-2">
+                <div className="d-inline-flex p-3 rounded-circle bg-warning bg-opacity-25 mb-2 shadow-sm">
+                  <i className="bi bi-phone-fill text-warning fs-1"></i>
+                </div>
+                <h5 className="fw-bold mb-1">Get TechStore Mobile App!</h5>
+                <p className={`small mb-3 ${subTextClass}`}>
+                  Shop faster, get instant delivery tracking, and enjoy exclusive <b>20% App-Only Discounts</b>.
+                </p>
+
+                <a 
+                  href={APP_DOWNLOAD_URL} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="btn btn-warning w-100 fw-bold py-2 rounded-pill shadow-sm text-dark d-flex align-items-center justify-content-center gap-2 mb-2"
+                  onClick={() => setShowAppDownloadModal(false)}
+                >
+                  <i className="bi bi-download fs-5"></i>
+                  <span>Download Android App (.APK)</span>
+                </a>
+
+                <button 
+                  type="button" 
+                  className={`btn btn-link btn-sm text-decoration-none small ${subTextClass}`}
+                  onClick={() => setShowAppDownloadModal(false)}
+                >
+                  Maybe Later
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PROFILE DRAWER MODAL */}
       {showProfileDrawer && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1055 }}>
@@ -1467,7 +1530,6 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
-                {/* 🟢 ROUNDED CONTAINER & FLOATING ROUNDED IMAGE IN PRODUCT DETAIL */}
                 <div 
                   className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
                   style={{ minHeight: '320px' }}
@@ -1485,7 +1547,6 @@ function App() {
                     10% OFF
                   </span>
                   
-                  {/* 🟢 PRODUCT DETAIL IMAGE WITH PERFECT PROPORTIONS & ROUNDED CORNERS */}
                   <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img 
                       src={selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
@@ -1934,9 +1995,34 @@ function App() {
         </>
       )}
 
-      {/* FOOTER */}
+      {/* 🟢 FOOTER WITH VISIBLE & BEAUTIFULLY STYLED APP DOWNLOAD SECTION */}
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
+          
+          {/* APP DOWNLOAD HIGHLIGHT BANNER IN FOOTER */}
+          <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
+            <div className="col-md-7 text-start">
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <i className="bi bi-phone text-warning fs-3"></i>
+                <h5 className="fw-bold text-warning m-0">Experience TechStore on Mobile App</h5>
+              </div>
+              <p className="small text-white-50 m-0">
+                Download our official Android App for lightning-fast checkout, real-time push notifications & exclusive mobile deals.
+              </p>
+            </div>
+            <div className="col-md-5 text-md-end mt-3 mt-md-0">
+              <a 
+                href={APP_DOWNLOAD_URL} 
+                target="_blank" 
+                rel="noreferrer"
+                className="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow d-inline-flex align-items-center gap-2 text-dark"
+              >
+                <i className="bi bi-android2 fs-5"></i>
+                <span>Click Here to Download App (.APK)</span>
+              </a>
+            </div>
+          </div>
+
           <div className="row g-4">
             <div className="col-md-4">
               <h5 className="fw-bold text-warning mb-2"><i className="bi bi-shop me-1"></i>TechStore</h5>
@@ -1950,6 +2036,7 @@ function App() {
                 <li><a href="#home" className="text-white-50 text-decoration-none" onClick={handleResetToAllCatalog}>Home Catalog</a></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowOrderTracking(true)}>Track My Orders</span></li>
                 <li><span style={{ cursor: 'pointer' }} onClick={() => setShowCartModal(true)}>My Shopping Cart</span></li>
+                <li><a href={APP_DOWNLOAD_URL} target="_blank" rel="noreferrer" className="text-warning text-decoration-none fw-bold">📲 Download Mobile App</a></li>
               </ul>
             </div>
             <div className="col-md-4">
