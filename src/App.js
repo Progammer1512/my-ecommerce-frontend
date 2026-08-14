@@ -22,7 +22,7 @@ const isRunningStandalone = () => {
 // 🟢 HELPER 2: DETECT IF USER IS ON MOBILE BROWSER (NOT DESKTOP)
 const isMobileDevice = () => {
   return (
-    /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
     window.innerWidth <= 768
   );
 };
@@ -35,7 +35,10 @@ const isValidImageUrl = (url) => {
 };
 
 // HELPER: READS EXACT STOCK FROM MONGODB
-const getProductStock = (p) => {
+const getProductStock = (p, selectedVariant = null) => {
+  if (selectedVariant && selectedVariant.stock !== undefined) {
+    return Number(selectedVariant.stock);
+  }
   if (!p) return 0;
   if (p.countInStock !== undefined && p.countInStock !== null) return Number(p.countInStock);
   if (p.stock !== undefined && p.stock !== null) return Number(p.stock);
@@ -138,9 +141,10 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // 🟢 FULL-PAGE PRODUCT DETAIL & ACTIVE DISPLAY IMAGE (GALLERY)
+  // 🟢 FULL-PAGE PRODUCT DETAIL, ACTIVE DISPLAY IMAGE & SELECTED VARIANT STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [activeGalleryImage, setActiveGalleryImage] = useState('');
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const [allReviews, setAllReviews] = useState([]);
 
@@ -197,6 +201,7 @@ function App() {
     setShowReviewModal(false);
     setShowReviewModalReturn(false);
     setSelectedProductDetail(null);
+    setSelectedVariant(null);
 
     if (state && typeof state.page === 'number') {
       setCurrentPage(state.page);
@@ -220,6 +225,11 @@ function App() {
             ? state.product.images[0]
             : (state.product?.image || DEFAULT_FALLBACK_IMAGE)
         );
+        if (state.product?.variants && state.product.variants.length > 0) {
+          setSelectedVariant(state.product.variants[0]);
+        } else {
+          setSelectedVariant(null);
+        }
         window.scrollTo({ top: 0, behavior: 'instant' });
         break;
       case 'CART':
@@ -780,30 +790,51 @@ function App() {
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
-  const addToCart = (product) => {
-    const prodStock = getProductStock(product);
+  // 🟢 ADD TO CART (WITH DYNAMIC VARIANT SUPPORT)
+  const addToCart = (product, specificVariant = null) => {
+    const variantToUse = specificVariant || selectedVariant;
+    const currentPrice = variantToUse ? Number(variantToUse.price) : Number(product.price);
+    const prodStock = getProductStock(product, variantToUse);
+
     if (prodStock <= 0) {
-      alert("❌ Sorry, this item is Out of Stock!");
+      alert("❌ Sorry, this item/size option is Out of Stock!");
       return;
     }
+
+    const variantKey = variantToUse 
+      ? `${product._id || product.id}_${variantToUse.size || 'STD'}_${variantToUse.color || 'STD'}`
+      : `${product._id || product.id}_BASE`;
+
+    const variantLabel = variantToUse 
+      ? `${variantToUse.color ? variantToUse.color + ' ' : ''}${variantToUse.size ? '(' + variantToUse.size + ')' : ''}`.trim()
+      : '';
+
     let updatedCart;
-    const existing = cart.find(item => item._id === product._id);
+    const existing = cart.find(item => item.cartItemKey === variantKey);
+
     if (existing) {
-      updatedCart = cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item);
+      updatedCart = cart.map(item => 
+        item.cartItemKey === variantKey ? { ...item, qty: item.qty + 1 } : item
+      );
     } else {
       updatedCart = [...cart, { 
-        ...product, 
+        ...product,
+        cartItemKey: variantKey,
+        selectedOption: variantLabel,
+        price: currentPrice,
         qty: 1, 
-        image: product.image || (product.images && product.images[0]) || DEFAULT_FALLBACK_IMAGE 
+        image: activeGalleryImage || product.image || (product.images && product.images[0]) || DEFAULT_FALLBACK_IMAGE 
       }];
     }
+
     setCart(updatedCart);
     syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
-  const updateCartQty = (id, delta) => {
+  const updateCartQty = (cartItemKey, delta) => {
     const updatedCart = cart.map(item => {
-      if (item._id === id) {
+      const currentKey = item.cartItemKey || item._id;
+      if (currentKey === cartItemKey) {
         const newQty = item.qty + delta;
         return newQty > 0 ? { ...item, qty: newQty } : null;
       }
@@ -814,8 +845,8 @@ function App() {
     syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
-  const removeFromCart = (id) => {
-    const updatedCart = cart.filter(item => item._id !== id);
+  const removeFromCart = (cartItemKey) => {
+    const updatedCart = cart.filter(item => (item.cartItemKey || item._id) !== cartItemKey);
     setCart(updatedCart);
     syncUserUserDataToDatabase(updatedCart, undefined);
   };
@@ -921,7 +952,7 @@ function App() {
     const orderPayload = {
       userEmail: user ? user.email : 'guest@techstore.com',
       orderItems: cart.map(i => ({ 
-        name: i.name, 
+        name: i.selectedOption ? `${i.name} [${i.selectedOption}]` : i.name, 
         qty: Number(i.qty) || 1, 
         price: Number(i.price) || 0, 
         product: i._id || i.id,
@@ -1640,7 +1671,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE MULTI-ANGLE GALLERY) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & DYNAMIC VARIANT PRICING) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1716,7 +1747,7 @@ function App() {
                 )}
               </div>
 
-              {/* RIGHT COLUMN: PRODUCT INFO & PURCHASE */}
+              {/* RIGHT COLUMN: PRODUCT INFO, VARIANTS & PURCHASE */}
               <div className="col-lg-7 d-flex flex-column">
                 <span className="badge bg-primary text-uppercase px-3 py-2 fw-bold w-auto me-auto mb-2">
                   {selectedProductDetail.category || 'General'}
@@ -1733,20 +1764,52 @@ function App() {
                   </span>
                 </div>
 
+                {/* 🟢 DYNAMIC PRICE ACCORDING TO SELECTED SIZE/OPTION */}
                 <div className="d-flex align-items-baseline gap-3 mb-3">
-                  <h1 className="text-success fw-bold display-6 m-0">₹{selectedProductDetail.price}</h1>
+                  <h1 className="text-success fw-bold display-6 m-0">
+                    ₹{selectedVariant ? selectedVariant.price : selectedProductDetail.price}
+                  </h1>
                   <span className={`text-decoration-line-through fs-5 ${subTextClass}`}>
-                    ₹{Math.round(selectedProductDetail.price * 1.15)}
+                    ₹{Math.round((selectedVariant ? selectedVariant.price : selectedProductDetail.price) * 1.15)}
                   </span>
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
+                {/* 🟢 INTERACTIVE SIZE & COLOR VARIANT SELECTOR BUTTONS */}
+                {selectedProductDetail.variants && selectedProductDetail.variants.length > 0 && (
+                  <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+                    <label className="fw-bold small d-block mb-2 text-primary">
+                      <i className="bi bi-tag-fill me-1"></i>Choose Size / Option:
+                    </label>
+                    <div className="d-flex flex-wrap gap-2">
+                      {selectedProductDetail.variants.map((v, idx) => {
+                        const isSelected = selectedVariant && selectedVariant.size === v.size && selectedVariant.color === v.color;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border ${
+                              isSelected 
+                                ? 'btn-warning text-dark border-warning shadow-sm' 
+                                : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
+                            }`}
+                            onClick={() => setSelectedVariant(v)}
+                          >
+                            <span>{v.color ? `${v.color} - ` : ''}<b>{v.size}</b></span>
+                            <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className={`row g-2 mb-4 p-3 rounded-3 border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                   <div className="col-6">
                     <span className={`small d-block fw-bold ${subTextClass}`}>Availability:</span>
-                    {getProductStock(selectedProductDetail) > 0 ? (
+                    {getProductStock(selectedProductDetail, selectedVariant) > 0 ? (
                       <span className="text-success fw-bold fs-6">
-                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail)} Left)
+                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail, selectedVariant)} Left)
                       </span>
                     ) : (
                       <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock (0 Left)</span>
@@ -1768,20 +1831,20 @@ function App() {
                 <div className="mt-auto d-flex gap-3">
                   <button 
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
-                      getProductStock(selectedProductDetail) <= 0 
+                      getProductStock(selectedProductDetail, selectedVariant) <= 0 
                         ? 'btn-secondary disabled' 
                         : 'btn-warning text-dark'
                     }`}
-                    disabled={getProductStock(selectedProductDetail) <= 0}
+                    disabled={getProductStock(selectedProductDetail, selectedVariant) <= 0}
                     onClick={() => {
-                      addToCart(selectedProductDetail);
+                      addToCart(selectedProductDetail, selectedVariant);
                       navigateToView('CART');
                     }}
                   >
                     <i className="bi bi-cart-plus-fill me-2"></i>
-                    {getProductStock(selectedProductDetail) <= 0 
+                    {getProductStock(selectedProductDetail, selectedVariant) <= 0 
                       ? 'Out of Stock' 
-                      : 'Add to Cart & Buy Now'
+                      : `Add to Cart (₹${selectedVariant ? selectedVariant.price : selectedProductDetail.price})`
                     }
                   </button>
                 </div>
@@ -2265,8 +2328,10 @@ function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {cart.map((item) => (
-                            <tr key={item._id}>
+                          {cart.map((item, idx) => {
+                            const cartKey = item.cartItemKey || item._id || idx;
+                            return (
+                            <tr key={cartKey}>
                               <td>
                                 <div 
                                   className="d-flex align-items-center gap-2" 
@@ -2287,6 +2352,11 @@ function App() {
                                     <span className="fw-bold small text-truncate d-block" style={{ maxWidth: '140px' }}>
                                       {item.name}
                                     </span>
+                                    {item.selectedOption && (
+                                      <span className="badge bg-primary text-white me-1" style={{ fontSize: '9px' }}>
+                                        {item.selectedOption}
+                                      </span>
+                                    )}
                                     <span className="text-primary fw-bold d-block" style={{ fontSize: '10px' }}>
                                       🔍 View Details &rarr;
                                     </span>
@@ -2299,7 +2369,7 @@ function App() {
                                 <div className={`d-inline-flex align-items-center border rounded px-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                                   <button 
                                     className="btn btn-sm btn-link text-danger text-decoration-none fw-bold px-2 py-0 fs-5"
-                                    onClick={() => updateCartQty(item._id, -1)}
+                                    onClick={() => updateCartQty(cartKey, -1)}
                                     title="Decrease quantity"
                                   >
                                     -
@@ -2307,7 +2377,7 @@ function App() {
                                   <span className="fw-bold px-2 small">{item.qty}</span>
                                   <button 
                                     className="btn btn-sm btn-link text-success text-decoration-none fw-bold px-2 py-0 fs-5"
-                                    onClick={() => updateCartQty(item._id, 1)}
+                                    onClick={() => updateCartQty(cartKey, 1)}
                                     title="Increase quantity"
                                   >
                                     +
@@ -2316,10 +2386,10 @@ function App() {
                               </td>
                               <td className="fw-bold text-success small">₹{item.price * item.qty}</td>
                               <td>
-                                <button className="btn btn-outline-danger btn-sm py-0 px-2 small" onClick={() => removeFromCart(item._id)}>Remove</button>
+                                <button className="btn btn-outline-danger btn-sm py-0 px-2 small" onClick={() => removeFromCart(cartKey)}>Remove</button>
                               </td>
                             </tr>
-                          ))}
+                          )})}
                         </tbody>
                       </table>
                     </div>
@@ -2564,7 +2634,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
                             <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light text-dark'}`}>{ord.paymentMethod || 'COD'}</span>
+                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light'}`}>{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
                                 <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
