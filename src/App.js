@@ -939,7 +939,7 @@ function App() {
   return (
     <div className={`${bgMainClass} min-vh-100 position-relative`} style={{ overflowX: 'hidden', width: '100%', backgroundColor: darkMode ? '#121212' : '#f8f9fa' }}>
       
-      {/* 🟢 TOP COMPACT NAVBAR: TECHSTORE ON FAR LEFT, PROFILE & CART ON FAR RIGHT */}
+      {/* 🟢 TOP COMPACT NAVBAR */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0 d-flex justify-content-between align-items-center">
           
@@ -998,7 +998,7 @@ function App() {
         </div>
       </nav>
 
-      {/* 🟢 SEARCH & MENU INTEGRATED BAR: PLACED BEAUTIFULLY JUST ABOVE SLIDING BANNER */}
+      {/* 🟢 SEARCH & MENU INTEGRATED BAR */}
       <div className="container mt-2 mb-2 px-2 px-md-3">
         <div className="d-flex align-items-center gap-2">
           
@@ -1190,7 +1190,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 ACCOUNT SETTINGS MODAL: WITH DARK MODE / LIGHT MODE TOGGLE OPTION */}
+      {/* ACCOUNT SETTINGS MODAL */}
       {showAccountSettingsModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -1209,7 +1209,7 @@ function App() {
                   <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
                 </div>
 
-                {/* 🌓 2. THEME CUSTOMIZATION (DARK MODE / LIGHT MODE TOGGLE) */}
+                {/* 2. THEME CUSTOMIZATION */}
                 <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
@@ -1254,8 +1254,9 @@ function App() {
                     <div className="row g-2 mt-1">
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
-                          <div className={`d-flex align-items-center gap-2 p-2 rounded border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                            <img src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} alt={item.name} className="rounded" width="48" height="48" style={{ objectFit: 'contain' }} />
+                          <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+                            {/* 🟢 ROUNDED CORNER FOR WISHLIST IMAGES */}
+                            <img src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} alt={item.name} className="rounded-3" width="48" height="48" style={{ objectFit: 'contain' }} />
                             <div className="flex-grow-1 text-truncate">
                               <span className="fw-bold small text-truncate d-block">{item.name}</span>
                               <span className="text-success fw-bold small">₹{item.price}</span>
@@ -1455,7 +1456,8 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
-                <div className={`p-3 border rounded-3 shadow-sm position-relative ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+                {/* 🟢 ROUNDED CONTAINER & IMAGE IN PRODUCT DETAIL */}
+                <div className={`p-3 border rounded-4 shadow-sm position-relative ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                   <button 
                     className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
                     style={{ width: '40px', height: '40px', zIndex: 10 }}
@@ -1471,7 +1473,7 @@ function App() {
                   <img 
                     src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
                     alt={selectedProductDetail.name} 
-                    className="img-fluid rounded" 
+                    className="img-fluid rounded-3" 
                     style={{ maxHeight: '380px', objectFit: 'contain' }}
                   />
                 </div>
@@ -1501,7 +1503,7 @@ function App() {
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                <div className={`row g-2 mb-4 p-3 rounded border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+                <div className={`row g-2 mb-4 p-3 rounded-3 border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                   <div className="col-6">
                     <span className={`small d-block fw-bold ${subTextClass}`}>Availability:</span>
                     {getProductStock(selectedProductDetail) > 0 ? (
@@ -1555,7 +1557,7 @@ function App() {
               <i className="bi bi-chat-left-quote-fill text-warning"></i> Customer Ratings & Verified Reviews
             </h4>
 
-            <div className={`row g-3 p-3 rounded border mb-4 align-items-center ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+            <div className={`row g-3 p-3 rounded-3 border mb-4 align-items-center ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
               <div className="col-md-4 text-center border-end border-secondary">
                 <h1 className="fw-bold display-3 m-0">{avgRating}</h1>
                 <div className="text-warning fs-3 mb-1">
@@ -1585,7 +1587,7 @@ function App() {
             <h6 className={`fw-bold mb-3 ${subTextClass}`}>Verified Buyer Reviews ({productReviews.length})</h6>
 
             {productReviews.length === 0 ? (
-              <div className={`p-4 text-center rounded border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+              <div className={`p-4 text-center rounded-3 border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                 <i className="bi bi-star fs-2 text-warning d-block mb-2"></i>
                 <p className="m-0 fw-bold">No reviews for this product yet.</p>
                 <small className={subTextClass}>Be the first customer to order and rate this item!</small>
@@ -1593,7 +1595,7 @@ function App() {
             ) : (
               <div className="d-flex flex-column gap-3">
                 {productReviews.map((rev, idx) => (
-                  <div key={idx} className={`p-3 border rounded ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+                  <div key={idx} className={`p-3 border rounded-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div className="d-flex align-items-center gap-2">
                         <span className="badge bg-success fw-bold px-2 py-1">
@@ -1619,15 +1621,16 @@ function App() {
             <div className="row g-2 g-md-4">
               {products.filter(p => p._id !== selectedProductDetail._id).slice(0, 6).map((p) => (
                 <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                  <div className={`card h-100 border-0 shadow-sm rounded-3 overflow-hidden ${cardBgClass}`}>
+                  <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden ${cardBgClass}`}>
                     <div 
                       className={`text-center p-2 p-md-3 ${darkMode ? 'bg-dark' : 'bg-white'}`}
                       style={{ height: '160px', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
+                      {/* 🟢 ROUNDED CORNER FOR SIMILAR PRODUCTS */}
                       <img 
                         src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                        className="img-fluid h-100" 
+                        className="img-fluid h-100 rounded-3" 
                         alt={p.name} 
                         style={{ objectFit: 'contain' }}
                       />
@@ -1768,7 +1771,7 @@ function App() {
                     
                     return (
                       <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                        <div className={`card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
+                        <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
                           
                           {/* WISHLIST BUTTON */}
                           <button 
@@ -1780,6 +1783,7 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
+                          {/* 🟢 ROUNDED CONTAINER & IMAGE FOR CATALOG CARDS */}
                           <div 
                             className={`text-center p-2 p-md-3 ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ height: '150px', cursor: 'pointer' }}
@@ -1787,7 +1791,7 @@ function App() {
                           >
                             <img 
                               src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                              className="img-fluid h-100" 
+                              className="img-fluid h-100 rounded-3" 
                               alt={p.name} 
                               style={{ objectFit: 'contain' }}
                             />
@@ -2221,8 +2225,8 @@ function App() {
                             <span className={`fw-bold small d-block mb-1 ${subTextClass}`}>Purchased Products:</span>
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
-                                <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded border bg-white" width="40" height="40" style={{ objectFit: 'cover' }} />
+                                <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
+                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded-3 border bg-white" width="40" height="40" style={{ objectFit: 'cover' }} />
                                   <div>
                                     <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
                                     <span className="badge bg-secondary" style={{ fontSize: '9px' }}>Qty: {item.qty || 1}</span>
