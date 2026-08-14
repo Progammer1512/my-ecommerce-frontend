@@ -14,7 +14,7 @@ const isValidImageUrl = (url) => {
   return true;
 };
 
-// HELPER: READS EXACT STOCK FROM MONGODB (Supports countInStock or stock)
+// HELPER: READS EXACT STOCK FROM MONGODB
 const getProductStock = (p) => {
   if (!p) return 0;
   if (p.countInStock !== undefined && p.countInStock !== null) return Number(p.countInStock);
@@ -28,7 +28,17 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // 🟢 PERSISTENT CART STATE (SURVIVES HARD REFRESH)
+  // 🌓 DARK MODE / LIGHT MODE PERSISTENT STATE
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const savedTheme = localStorage.getItem('techstore_theme');
+      return savedTheme === 'dark';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // 🟢 PERSISTENT CART STATE
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('techstore_cart');
@@ -54,7 +64,7 @@ function App() {
 
   const [showOrderTracking, setShowOrderTracking] = useState(false);
 
-  // 🟢 PERSISTENT WISHLIST STATE (SURVIVES HARD REFRESH)
+  // 🟢 PERSISTENT WISHLIST STATE
   const [wishlist, setWishlist] = useState(() => {
     try {
       const savedWish = localStorage.getItem('techstore_wishlist');
@@ -321,6 +331,11 @@ function App() {
     }
   }, [heroBanners.length]);
 
+  // 🌓 THEME SYNC WITH LOCALSTORAGE
+  useEffect(() => {
+    localStorage.setItem('techstore_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
   // 🟢 AUTO-PERSIST WISHLIST & CART IN LOCALSTORAGE
   useEffect(() => {
     localStorage.setItem('techstore_wishlist', JSON.stringify(wishlist));
@@ -357,14 +372,12 @@ function App() {
     const currentCart = updatedCart !== undefined ? updatedCart : cart;
     const currentWishlist = updatedWishlist !== undefined ? updatedWishlist : wishlist;
 
-    // Always update localStorage first
     if (updatedCart !== undefined) localStorage.setItem('techstore_cart', JSON.stringify(updatedCart));
     if (updatedWishlist !== undefined) localStorage.setItem('techstore_wishlist', JSON.stringify(updatedWishlist));
 
     if (!activeUser || !activeUser.email) return;
 
     try {
-      // 1. Direct Wishlist Endpoint Sync
       if (updatedWishlist !== undefined) {
         axios.post(`${BASE_URL}/api/auth/wishlist`, {
           email: activeUser.email.toLowerCase().trim(),
@@ -374,7 +387,6 @@ function App() {
         }).catch(() => {});
       }
 
-      // 2. Direct Cart Endpoint Sync
       if (updatedCart !== undefined) {
         axios.post(`${BASE_URL}/api/auth/cart`, {
           email: activeUser.email.toLowerCase().trim(),
@@ -384,7 +396,6 @@ function App() {
         }).catch(() => {});
       }
 
-      // 3. Full Profile Sync
       const res = await axios.put(`${BASE_URL}/api/auth/profile`, {
         email: activeUser.email.toLowerCase().trim(),
         name: activeUser.name || '',
@@ -403,7 +414,6 @@ function App() {
     }
   };
 
-  // 🟢 WISHLIST TOGGLE (SURVIVES REFRESH 100%)
   const toggleWishlist = (product) => {
     let updated;
     if (wishlist.some(item => item._id === product._id)) {
@@ -435,7 +445,6 @@ function App() {
     localStorage.setItem('userSavedAddresses', JSON.stringify(updated));
   };
 
-  // TOUCH SWIPE LOGIC FOR BANNER
   const handleTouchStart = (e) => { touchStartX.current = e.targetTouches[0].clientX; };
   const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; };
   const handleTouchEnd = () => {
@@ -922,101 +931,113 @@ function App() {
 
   const currentBanner = heroBanners[currentSlide] || null;
 
+  // 🌓 DYNAMIC THEME CLASS HELPERS
+  const bgMainClass = darkMode ? 'bg-dark text-white' : 'bg-light text-dark';
+  const cardBgClass = darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : 'bg-white text-dark';
+  const subTextClass = darkMode ? 'text-white-50' : 'text-muted';
+
   return (
-    <div className="bg-light min-vh-100 position-relative" style={{ overflowX: 'hidden', width: '100%' }}>
+    <div className={`${bgMainClass} min-vh-100 position-relative`} style={{ overflowX: 'hidden', width: '100%', backgroundColor: darkMode ? '#121212' : '#f8f9fa' }}>
       
-      {/* NAVBAR */}
+      {/* 🟢 TOP NAVBAR: BRAND AT LEFT CORNER, PROFILE & CART AT TOP RIGHT, MENU JUST BELOW PROFILE/CART */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
-        <div className="container-fluid p-0">
+        <div className="container-fluid p-0 d-flex flex-column gap-2">
           
-          {/* TOP ROW: BRAND LOGO & MENU ONLY */}
-          <div className="d-flex justify-content-between align-items-center w-100 mb-2">
-            <div className="d-flex align-items-center gap-2">
-              <button 
-                className="btn btn-warning btn-sm fw-bold px-2 py-1 shadow-sm d-flex align-items-center justify-content-center"
-                onClick={() => setShowCategoryMenu(true)}
-                title="Browse Categories"
-                style={{ borderRadius: '6px' }}
-              >
-                <i className="bi bi-list fs-5 me-1"></i>
-                <span className="small fw-bold">Menu</span>
-              </button>
-
-              <a 
-                className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
-                href="#home"
-                onClick={handleResetToAllCatalog}
-              >
-                <i className="bi bi-shop me-1"></i>TechStore
-              </a>
-            </div>
-
-            <div id="header-right-slot"></div>
-          </div>
-
-          {/* MIDDLE ROW: PROFILE BUTTON & CART BUTTON */}
-          <div className="d-flex justify-content-between align-items-center w-100 gap-2 mb-2">
-            
-            {user ? (
-              <button 
-                className="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
-                onClick={() => setShowProfileDrawer(true)}
-                title="Open Profile Menu"
-              >
-                <img 
-                  src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
-                  alt="Profile" 
-                  className="rounded-circle border border-warning" 
-                  width="26" 
-                  height="26" 
-                />
-                <span className="fw-bold small text-truncate" style={{ maxWidth: '130px' }}>{user.name}</span>
-                <i className="bi bi-chevron-down small text-warning ms-1"></i>
-              </button>
-            ) : (
-              <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '32px', width: '32px' }}>
-                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
-                </div>
-              </div>
-            )}
-
-            {/* CART BUTTON */}
-            <button 
-              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm"
-              onClick={() => setShowCartModal(true)}
+          {/* ROW 1: BRAND LOGO PINNED TO FAR LEFT & PROFILE/CART AT FAR RIGHT */}
+          <div className="d-flex justify-content-between align-items-center w-100">
+            {/* BRAND LOGO PINNED TO FAR LEFT */}
+            <a 
+              className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
+              href="#home"
+              onClick={handleResetToAllCatalog}
             >
-              <i className="bi bi-cart3 me-1"></i> Cart
-              {cartItemCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                  {cartItemCount}
-                </span>
-              )}
-            </button>
+              <i className="bi bi-shop me-1"></i>TechStore
+            </a>
 
+            {/* PROFILE & CART BUTTONS AT TOP RIGHT */}
+            <div className="d-flex align-items-center gap-2">
+              {user ? (
+                <button 
+                  className="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
+                  onClick={() => setShowProfileDrawer(true)}
+                  title="Open Profile Menu"
+                >
+                  <img 
+                    src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
+                    alt="Profile" 
+                    className="rounded-circle border border-warning" 
+                    width="24" 
+                    height="24" 
+                  />
+                  <span className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{user.name}</span>
+                  <i className="bi bi-chevron-down small text-warning ms-1"></i>
+                </button>
+              ) : (
+                <div className="d-flex align-items-center gap-1 gap-sm-2">
+                  <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                  <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
+                  <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '30px', width: '30px' }}>
+                    <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
+                  </div>
+                </div>
+              )}
+
+              {/* CART BUTTON */}
+              <button 
+                className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm text-dark"
+                onClick={() => setShowCartModal(true)}
+              >
+                <i className="bi bi-cart3 me-1"></i> Cart
+                {cartItemCount > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {cartItemCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Bottom Row: Search Bar */}
-          <div className="w-100 mt-1">
-            <input 
-              type="text" 
-              className="form-control form-control-sm rounded-pill px-3 shadow-sm" 
-              placeholder="Search products..." 
-              value={searchTerm} 
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); handleResetToAllCatalog(); }} 
-            />
+          {/* ROW 2: MENU BUTTON POSITIONED DIRECTLY BELOW PROFILE & CART (ALIGNED RIGHT) */}
+          <div className="d-flex justify-content-end align-items-center w-100">
+            <button 
+              className="btn btn-warning btn-sm fw-bold px-3 py-1 shadow-sm d-flex align-items-center justify-content-center gap-1 text-dark rounded-pill"
+              onClick={() => setShowCategoryMenu(true)}
+              title="Browse Categories"
+            >
+              <i className="bi bi-list fs-6"></i>
+              <span className="small fw-bold">Menu / Categories</span>
+            </button>
           </div>
 
         </div>
       </nav>
 
+      {/* 🟢 SEARCH BAR: MOVED DOWN ON WHITE/MAIN BACKGROUND, JUST ABOVE SLIDING BANNER */}
+      <div className="container mt-3 px-2 px-md-3">
+        <div className={`p-2 rounded-4 shadow-sm border ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+          <div className="input-group">
+            <span className={`input-group-text border-0 ${darkMode ? 'bg-dark text-warning' : 'bg-white text-muted'}`}>
+              <i className="bi bi-search fs-6"></i>
+            </span>
+            <input 
+              type="text" 
+              className={`form-control border-0 shadow-none px-2 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`} 
+              placeholder="Search products by title, category, or specifications..." 
+              value={searchTerm} 
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); handleResetToAllCatalog(); }} 
+            />
+            {searchTerm && (
+              <button className="btn btn-sm btn-link text-secondary text-decoration-none" onClick={() => setSearchTerm('')}>✕</button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* PROFILE DRAWER MODAL */}
       {showProfileDrawer && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1055 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               
               <div className="modal-header bg-dark text-white d-flex align-items-center gap-3 p-3">
                 <img 
@@ -1033,9 +1054,9 @@ function App() {
                 <button type="button" className="btn-close btn-close-white ms-auto" onClick={() => setShowProfileDrawer(false)}></button>
               </div>
 
-              <div className="modal-body p-2 bg-light d-flex flex-column gap-2">
+              <div className={`modal-body p-2 d-flex flex-column gap-2 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
                 <button 
-                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
                   onClick={() => {
                     setShowProfileDrawer(false);
                     setShowEditProfileModal(true);
@@ -1046,7 +1067,7 @@ function App() {
                 </button>
 
                 <button 
-                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
                   onClick={() => {
                     setShowProfileDrawer(false);
                     fetchLiveOrders();
@@ -1063,7 +1084,7 @@ function App() {
                 </button>
 
                 <button 
-                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
                   onClick={() => {
                     setShowProfileDrawer(false);
                     setShowAccountSettingsModal(true);
@@ -1074,7 +1095,7 @@ function App() {
                 </button>
 
                 <button 
-                  className="btn btn-white bg-white text-dark border text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm"
+                  className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
                   onClick={() => {
                     setShowProfileDrawer(false);
                     setShowPrivacyPolicyModal(true);
@@ -1085,7 +1106,7 @@ function App() {
                 </button>
               </div>
 
-              <div className="modal-footer bg-light border-top p-2">
+              <div className={`modal-footer border-top p-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                 <button 
                   className="btn btn-danger w-100 fw-bold py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
                   onClick={handleGoogleLogout}
@@ -1104,22 +1125,22 @@ function App() {
       {showEditProfileModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+            <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="fw-bold mb-0 text-warning"><i className="bi bi-person-bounding-box me-2"></i>My Profile Details</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEditProfileModal(false)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowEditProfileModal(false)}></button>
               </div>
 
               <form onSubmit={handleUpdateProfileSubmit}>
                 <div className="mb-2">
-                  <label className="form-label fw-bold small text-muted">Email ID (Read Only)</label>
-                  <input type="email" className="form-control bg-light" disabled value={user.email} />
+                  <label className={`form-label fw-bold small ${subTextClass}`}>Email ID (Read Only)</label>
+                  <input type="email" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : 'bg-light'}`} disabled value={user.email} />
                 </div>
                 <div className="mb-2">
                   <label className="form-label fw-bold small">Full Name</label>
                   <input 
                     type="text" 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     required 
                     value={profileFormData.name} 
                     onChange={(e) => setProfileFormData({...profileFormData, name: e.target.value})} 
@@ -1129,7 +1150,7 @@ function App() {
                   <label className="form-label fw-bold small">Mobile Number</label>
                   <input 
                     type="tel" 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     required 
                     value={profileFormData.mobile} 
                     onChange={(e) => setProfileFormData({...profileFormData, mobile: e.target.value})} 
@@ -1138,7 +1159,7 @@ function App() {
                 <div className="mb-2">
                   <label className="form-label fw-bold small">Shipping Address</label>
                   <textarea 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     rows="2" 
                     required 
                     value={profileFormData.address} 
@@ -1149,7 +1170,7 @@ function App() {
                   <label className="form-label fw-bold small">Pincode</label>
                   <input 
                     type="text" 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     required 
                     value={profileFormData.pincode} 
                     onChange={(e) => setProfileFormData({...profileFormData, pincode: e.target.value})} 
@@ -1158,7 +1179,7 @@ function App() {
 
                 <div className="d-flex justify-content-end gap-2 pt-2 border-top">
                   <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEditProfileModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-warning fw-bold px-4">Save & Update Profile</button>
+                  <button type="submit" className="btn btn-warning fw-bold px-4 text-dark">Save & Update Profile</button>
                 </div>
               </form>
             </div>
@@ -1166,42 +1187,74 @@ function App() {
         </div>
       )}
 
-      {/* ACCOUNT SETTINGS MODAL */}
+      {/* 🟢 ACCOUNT SETTINGS MODAL: WITH DARK MODE / LIGHT MODE TOGGLE OPTION */}
       {showAccountSettingsModal && user && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 overflow-hidden">
+            <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 overflow-hidden ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-gear-fill me-2 text-warning"></i>Account Settings</h5>
-                <button type="button" className="btn-close" onClick={() => setShowAccountSettingsModal(false)}></button>
+                <h5 className="fw-bold mb-0 text-warning"><i className="bi bi-gear-fill me-2"></i>Account Settings</h5>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowAccountSettingsModal(false)}></button>
               </div>
 
               <div className="overflow-auto pe-1" style={{ maxHeight: '70vh' }}>
                 
                 {/* 1. ACCOUNT OVERVIEW */}
-                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
-                  <h6 className="fw-bold text-dark mb-1 d-flex align-items-center"><i className="bi bi-person-check-fill text-success me-2"></i>Account Overview</h6>
-                  <small className="text-muted d-block">User: {user.name} ({user.email})</small>
+                <div className={`p-3 rounded border mb-3 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
+                  <h6 className="fw-bold mb-1 d-flex align-items-center"><i className="bi bi-person-check-fill text-success me-2"></i>Account Overview</h6>
+                  <small className={`${subTextClass} d-block`}>User: {user.name} ({user.email})</small>
                   <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
                 </div>
 
-                {/* 2. MY SAVED WISHLIST ITEMS */}
-                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
-                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center justify-content-between">
+                {/* 🌓 2. THEME CUSTOMIZATION (DARK MODE / LIGHT MODE TOGGLE) */}
+                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 className="fw-bold mb-1 d-flex align-items-center">
+                        <i className={`bi ${darkMode ? 'bi-moon-stars-fill text-warning' : 'bi-sun-fill text-warning'} me-2 fs-5`}></i>
+                        App Theme Mode
+                      </h6>
+                      <small className={subTextClass}>
+                        {darkMode ? '🌙 Dark Mode is Active (Easy on eyes)' : '☀️ Light Mode is Active (Classic view)'}
+                      </small>
+                    </div>
+                    
+                    <div className="d-flex gap-1 bg-white p-1 rounded-pill border shadow-sm">
+                      <button 
+                        type="button"
+                        className={`btn btn-sm rounded-pill fw-bold px-3 py-1 ${!darkMode ? 'btn-warning text-dark' : 'btn-light text-muted'}`}
+                        onClick={() => setDarkMode(false)}
+                      >
+                        ☀️ Light
+                      </button>
+                      <button 
+                        type="button"
+                        className={`btn btn-sm rounded-pill fw-bold px-3 py-1 ${darkMode ? 'btn-dark text-warning' : 'btn-light text-muted'}`}
+                        onClick={() => setDarkMode(true)}
+                      >
+                        🌙 Dark
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. MY SAVED WISHLIST ITEMS */}
+                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
+                  <h6 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
                     <span><i className="bi bi-heart-fill text-danger me-2"></i>My Saved Wishlist</span>
                     <span className="badge bg-danger rounded-pill">{wishlist.length} Items</span>
                   </h6>
 
                   {wishlist.length === 0 ? (
-                    <small className="text-muted d-block py-2">No products saved to wishlist yet. Click the heart ❤️ icon on products to save them here!</small>
+                    <small className={`${subTextClass} d-block py-2`}>No products saved to wishlist yet. Click the heart ❤️ icon on products to save them here!</small>
                   ) : (
                     <div className="row g-2 mt-1">
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
-                          <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border shadow-sm">
+                          <div className={`d-flex align-items-center gap-2 p-2 rounded border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                             <img src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} alt={item.name} className="rounded" width="48" height="48" style={{ objectFit: 'contain' }} />
                             <div className="flex-grow-1 text-truncate">
-                              <span className="fw-bold small text-dark text-truncate d-block">{item.name}</span>
+                              <span className="fw-bold small text-truncate d-block">{item.name}</span>
                               <span className="text-success fw-bold small">₹{item.price}</span>
                             </div>
                             <div className="d-flex gap-1">
@@ -1215,11 +1268,11 @@ function App() {
                   )}
                 </div>
 
-                {/* 3. AVAILABLE STORE COUPONS */}
-                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
-                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center"><i className="bi bi-tag-fill text-warning me-2"></i>Available Live Promo Coupons</h6>
+                {/* 4. AVAILABLE STORE COUPONS */}
+                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
+                  <h6 className="fw-bold mb-2 d-flex align-items-center"><i className="bi bi-tag-fill text-warning me-2"></i>Available Live Promo Coupons</h6>
                   {coupons.length === 0 ? (
-                    <small className="text-muted d-block py-1">No coupons active right now.</small>
+                    <small className={`${subTextClass} d-block py-1`}>No coupons active right now.</small>
                   ) : (
                     <div className="d-flex flex-wrap gap-2 mt-2">
                       {coupons.map((c, idx) => {
@@ -1228,11 +1281,11 @@ function App() {
                         const remaining = Math.max(0, maxU - usedU);
 
                         return (
-                          <div key={c.id || idx} className="p-2 bg-white rounded border border-primary border-opacity-25 d-flex align-items-center gap-2 shadow-sm">
+                          <div key={c.id || idx} className={`p-2 rounded border border-primary border-opacity-25 d-flex align-items-center gap-2 shadow-sm ${darkMode ? 'bg-dark' : 'bg-white'}`}>
                             <span className="badge bg-primary fw-bold">🏷️ {c.code}</span>
-                            <small className="fw-bold text-dark">{c.discount}% OFF on [{c.category || 'All'}]</small>
+                            <small className="fw-bold">{c.discount}% OFF on [{c.category || 'All'}]</small>
                             {c.targetUserEmail && <span className="badge bg-warning text-dark small">🎁 Special For You</span>}
-                            <small className="text-muted">({remaining} left)</small>
+                            <small className={subTextClass}>({remaining} left)</small>
                           </div>
                         );
                       })}
@@ -1240,17 +1293,17 @@ function App() {
                   )}
                 </div>
 
-                {/* 4. MULTIPLE SAVED SHIPPING ADDRESSES */}
-                <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                {/* 5. MULTIPLE SAVED SHIPPING ADDRESSES */}
+                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h6 className="fw-bold text-dark m-0 d-flex align-items-center"><i className="bi bi-geo-alt-fill text-info me-2"></i>Saved Shipping Addresses</h6>
+                    <h6 className="fw-bold m-0 d-flex align-items-center"><i className="bi bi-geo-alt-fill text-info me-2"></i>Saved Shipping Addresses</h6>
                     <button className="btn btn-sm btn-outline-primary fw-bold py-0 px-2" style={{ fontSize: '12px' }} onClick={() => setShowAddAddressForm(!showAddAddressForm)}>
                       {showAddAddressForm ? 'Cancel' : '+ Add New Address'}
                     </button>
                   </div>
 
                   {showAddAddressForm && (
-                    <form onSubmit={handleAddNewAddress} className="bg-white p-3 rounded border mb-3 shadow-sm">
+                    <form onSubmit={handleAddNewAddress} className={`p-3 rounded border mb-3 shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                       <h6 className="fw-bold text-primary mb-2 small">Add Shipping Location Details:</h6>
                       <div className="row g-2 mb-2">
                         <div className="col-4">
@@ -1278,15 +1331,15 @@ function App() {
                   )}
 
                   {savedAddresses.length === 0 ? (
-                    <small className="text-muted d-block py-1">No multiple addresses added yet. Primary default address is used for checkout.</small>
+                    <small className={`${subTextClass} d-block py-1`}>No multiple addresses added yet. Primary default address is used for checkout.</small>
                   ) : (
                     <div className="d-flex flex-column gap-2 mt-2">
                       {savedAddresses.map((addr) => (
-                        <div key={addr.id} className="p-2 bg-white rounded border d-flex justify-content-between align-items-center shadow-sm">
+                        <div key={addr.id} className={`p-2 rounded border d-flex justify-content-between align-items-center shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                           <div>
                             <span className="badge bg-secondary me-2">{addr.title}</span>
-                            <span className="fw-bold small text-dark me-2">{addr.name} ({addr.phone})</span>
-                            <small className="text-muted d-block">{addr.address} - {addr.pincode}</small>
+                            <span className="fw-bold small me-2">{addr.name} ({addr.phone})</span>
+                            <small className={`${subTextClass} d-block`}>{addr.address} - {addr.pincode}</small>
                           </div>
                           <button className="btn btn-sm btn-outline-danger py-0 px-2" style={{ fontSize: '11px' }} onClick={() => handleDeleteAddress(addr.id)}>Delete</button>
                         </div>
@@ -1295,7 +1348,7 @@ function App() {
                   )}
                 </div>
 
-                {/* 5. DANGER ZONE */}
+                {/* 6. DANGER ZONE */}
                 <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-2">
                   <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
                   <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, saved addresses, and account history from MongoDB.</p>
@@ -1318,23 +1371,23 @@ function App() {
       {showPrivacyPolicyModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-lg p-3 p-md-4 rounded-4">
+            <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="fw-bold mb-0 text-info"><i className="bi bi-shield-lock-fill me-2"></i>Store Privacy Policy</h5>
-                <button type="button" className="btn-close" onClick={() => setShowPrivacyPolicyModal(false)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowPrivacyPolicyModal(false)}></button>
               </div>
 
-              <div className="p-3 bg-light rounded border overflow-auto" style={{ maxHeight: '320px' }}>
-                <h6 className="fw-bold text-dark">1. Information Collection & Usage</h6>
-                <p className="small text-secondary">
+              <div className={`p-3 rounded border overflow-auto ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`} style={{ maxHeight: '320px' }}>
+                <h6 className="fw-bold">1. Information Collection & Usage</h6>
+                <p className={`small ${subTextClass}`}>
                   TechStore collects user name, contact number, and shipping address solely for processing and delivering orders smoothly.
                 </p>
-                <h6 className="fw-bold text-dark">2. Data Protection & Security</h6>
-                <p className="small text-secondary">
+                <h6 className="fw-bold">2. Data Protection & Security</h6>
+                <p className={`small ${subTextClass}`}>
                   Your personal data is encrypted and securely saved in database servers. We never sell or share user information with third-party advertisers.
                 </p>
-                <h6 className="fw-bold text-dark">3. User Rights</h6>
-                <p className="small text-secondary">
+                <h6 className="fw-bold">3. User Rights</h6>
+                <p className={`small ${subTextClass}`}>
                   Customers retain full rights to edit their profile details or delete their account instantly at any time from the Account Settings menu.
                 </p>
               </div>
@@ -1351,14 +1404,14 @@ function App() {
       {showCategoryMenu && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-sm">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-dark text-white">
                 <h5 className="modal-title fw-bold text-warning mb-0">
                   <i className="bi bi-grid-3x3-gap-fill me-2"></i>Select Category
                 </h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCategoryMenu(false)}></button>
               </div>
-              <div className="modal-body p-3 bg-light">
+              <div className={`modal-body p-3 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
                 <div className="d-flex flex-column gap-2">
                   {categoriesList.map((cat, idx) => (
                     <button
@@ -1366,7 +1419,7 @@ function App() {
                       className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between ${
                         selectedCategory === cat 
                           ? 'btn-warning text-dark shadow-sm' 
-                          : 'btn-white bg-white text-dark border'
+                          : darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'
                       }`}
                       onClick={() => {
                         setSelectedCategory(cat);
@@ -1390,16 +1443,16 @@ function App() {
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
-            className="btn btn-outline-dark fw-bold mb-4 rounded-pill px-4 shadow-sm"
+            className={`btn fw-bold mb-4 rounded-pill px-4 shadow-sm ${darkMode ? 'btn-outline-light' : 'btn-outline-dark'}`}
             onClick={handleResetToAllCatalog}
           >
             &larr; Back to All Products Catalog
           </button>
 
-          <div className="card border-0 shadow-lg p-3 p-md-4 bg-white rounded-4 mb-5">
+          <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-center">
               <div className="col-lg-5 text-center">
-                <div className="p-3 border rounded-3 bg-white shadow-sm position-relative">
+                <div className={`p-3 border rounded-3 shadow-sm position-relative ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                   <button 
                     className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
                     style={{ width: '40px', height: '40px', zIndex: 10 }}
@@ -1426,28 +1479,28 @@ function App() {
                   {selectedProductDetail.category || 'General'}
                 </span>
                 
-                <h1 className="fw-bold text-dark mb-2 fs-3 fs-md-2">{selectedProductDetail.name}</h1>
+                <h1 className="fw-bold mb-2 fs-3 fs-md-2">{selectedProductDetail.name}</h1>
                 
                 <div className="d-flex align-items-center gap-2 mb-3">
                   <span className="badge bg-success px-2 py-1 fs-6 fw-bold">
                     {avgRating} ★
                   </span>
-                  <span className="text-muted small fw-semibold">
+                  <span className={`small fw-semibold ${subTextClass}`}>
                     ({totalReviewsCount} Verified Customer Rating & Reviews)
                   </span>
                 </div>
 
                 <div className="d-flex align-items-baseline gap-3 mb-3">
                   <h1 className="text-success fw-bold display-6 m-0">₹{selectedProductDetail.price}</h1>
-                  <span className="text-muted text-decoration-line-through fs-5">
+                  <span className={`text-decoration-line-through fs-5 ${subTextClass}`}>
                     ₹{Math.round(selectedProductDetail.price * 1.15)}
                   </span>
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                <div className="row g-2 mb-4 p-3 bg-light rounded border">
+                <div className={`row g-2 mb-4 p-3 rounded border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                   <div className="col-6">
-                    <span className="small text-muted d-block fw-bold">Availability:</span>
+                    <span className={`small d-block fw-bold ${subTextClass}`}>Availability:</span>
                     {getProductStock(selectedProductDetail) > 0 ? (
                       <span className="text-success fw-bold fs-6">
                         <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail)} Left)
@@ -1457,14 +1510,14 @@ function App() {
                     )}
                   </div>
                   <div className="col-6">
-                    <span className="small text-muted d-block fw-bold">Delivery:</span>
-                    <span className="text-dark fw-bold fs-6">🚀 FREE Express Delivery</span>
+                    <span className={`small d-block fw-bold ${subTextClass}`}>Delivery:</span>
+                    <span className="fw-bold fs-6">🚀 FREE Express Delivery</span>
                   </div>
                 </div>
 
                 <div className="mb-4">
-                  <h5 className="fw-bold text-dark">About Product Specifications:</h5>
-                  <p className="text-secondary leading-relaxed m-0">
+                  <h5 className="fw-bold">About Product Specifications:</h5>
+                  <p className={`leading-relaxed m-0 ${subTextClass}`}>
                     {selectedProductDetail.description || 'Premium quality product verified and direct shipped from top sellers.'}
                   </p>
                 </div>
@@ -1474,7 +1527,7 @@ function App() {
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
                       getProductStock(selectedProductDetail) <= 0 
                         ? 'btn-secondary disabled' 
-                        : 'btn-warning'
+                        : 'btn-warning text-dark'
                     }`}
                     disabled={getProductStock(selectedProductDetail) <= 0}
                     onClick={() => {
@@ -1494,18 +1547,18 @@ function App() {
           </div>
 
           {/* REVIEWS SECTION */}
-          <div className="card border-0 shadow-sm p-3 p-md-4 bg-white rounded-4 mb-5">
-            <h4 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+          <div className={`card border-0 shadow-sm p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
+            <h4 className="fw-bold mb-3 d-flex align-items-center gap-2">
               <i className="bi bi-chat-left-quote-fill text-warning"></i> Customer Ratings & Verified Reviews
             </h4>
 
-            <div className="row g-3 p-3 bg-light rounded border mb-4 align-items-center">
-              <div className="col-md-4 text-center border-end">
-                <h1 className="fw-bold text-dark display-3 m-0">{avgRating}</h1>
+            <div className={`row g-3 p-3 rounded border mb-4 align-items-center ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+              <div className="col-md-4 text-center border-end border-secondary">
+                <h1 className="fw-bold display-3 m-0">{avgRating}</h1>
                 <div className="text-warning fs-3 mb-1">
                   {'★'.repeat(Math.round(Number(avgRating)))}
                 </div>
-                <span className="text-muted small fw-bold">Overall Product Rating ({totalReviewsCount} Reviews)</span>
+                <span className={`small fw-bold ${subTextClass}`}>Overall Product Rating ({totalReviewsCount} Reviews)</span>
               </div>
               <div className="col-md-8">
                 {[5, 4, 3, 2, 1].map((starVal) => {
@@ -1513,42 +1566,42 @@ function App() {
                   return (
                     <div key={starVal} className="d-flex align-items-center gap-2 small mb-1">
                       <span className="fw-bold" style={{ width: '25px' }}>{starVal} ★</span>
-                      <div className="progress flex-grow-1" style={{ height: '8px' }}>
+                      <div className="progress flex-grow-1" style={{ height: '8px', backgroundColor: darkMode ? '#333' : '#e9ecef' }}>
                         <div 
                           className={`progress-bar ${starVal >= 4 ? 'bg-success' : starVal === 3 ? 'bg-warning' : 'bg-danger'}`} 
                           style={{ width: `${pct}%` }}
                         ></div>
                       </div>
-                      <span className="text-muted" style={{ width: '35px' }}>{pct}%</span>
+                      <span className={subTextClass} style={{ width: '35px' }}>{pct}%</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <h6 className="fw-bold mb-3 text-secondary">Verified Buyer Reviews ({productReviews.length})</h6>
+            <h6 className={`fw-bold mb-3 ${subTextClass}`}>Verified Buyer Reviews ({productReviews.length})</h6>
 
             {productReviews.length === 0 ? (
-              <div className="p-4 text-center text-muted bg-light rounded border">
+              <div className={`p-4 text-center rounded border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                 <i className="bi bi-star fs-2 text-warning d-block mb-2"></i>
                 <p className="m-0 fw-bold">No reviews for this product yet.</p>
-                <small className="text-muted">Be the first customer to order and rate this item!</small>
+                <small className={subTextClass}>Be the first customer to order and rate this item!</small>
               </div>
             ) : (
               <div className="d-flex flex-column gap-3">
                 {productReviews.map((rev, idx) => (
-                  <div key={idx} className="p-3 border rounded bg-light">
+                  <div key={idx} className={`p-3 border rounded ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div className="d-flex align-items-center gap-2">
                         <span className="badge bg-success fw-bold px-2 py-1">
                           {rev.rating || 5} ★
                         </span>
-                        <span className="fw-bold text-dark small">{rev.customerName || 'Verified Buyer'}</span>
+                        <span className="fw-bold small">{rev.customerName || 'Verified Buyer'}</span>
                         <span className="badge bg-secondary" style={{ fontSize: '10px' }}>Verified Purchase</span>
                       </div>
-                      <small className="text-muted">{rev.date || 'Recent'}</small>
+                      <small className={subTextClass}>{rev.date || 'Recent'}</small>
                     </div>
-                    <p className="m-0 small text-dark fw-semibold">
+                    <p className="m-0 small fw-semibold">
                       "{rev.comment || 'Great quality product! Completely satisfied with the purchase.'}"
                     </p>
                   </div>
@@ -1558,14 +1611,14 @@ function App() {
           </div>
 
           <div className="mt-5 mb-4">
-            <h3 className="fw-bold mb-4 text-dark fs-4">You May Also Like (Similar Store Products)</h3>
+            <h3 className="fw-bold mb-4 fs-4">You May Also Like (Similar Store Products)</h3>
             
             <div className="row g-2 g-md-4">
               {products.filter(p => p._id !== selectedProductDetail._id).slice(0, 6).map((p) => (
                 <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                  <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden">
+                  <div className={`card h-100 border-0 shadow-sm rounded-3 overflow-hidden ${cardBgClass}`}>
                     <div 
-                      className="bg-white text-center p-2 p-md-3" 
+                      className={`text-center p-2 p-md-3 ${darkMode ? 'bg-dark' : 'bg-white'}`}
                       style={{ height: '160px', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
@@ -1576,10 +1629,10 @@ function App() {
                         style={{ objectFit: 'contain' }}
                       />
                     </div>
-                    <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top">
+                    <div className={`card-body p-2 p-md-3 d-flex flex-column border-top ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                       <span className="badge bg-secondary mb-1 w-auto me-auto" style={{ fontSize: '10px' }}>{p.category || 'General'}</span>
                       <h6 
-                        className="card-title fw-bold text-dark text-truncate small m-0 mb-1" 
+                        className="card-title fw-bold text-truncate small m-0 mb-1" 
                         style={{ cursor: 'pointer' }}
                         onClick={() => handleOpenProductDetail(p)}
                       >
@@ -1600,15 +1653,15 @@ function App() {
         </div>
       ) : (
         <>
-          {/* BANNERS */}
+          {/* SLIDING BANNER CAROUSEL */}
           <div className="container mt-3 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
-                className="rounded-4 p-4 text-center bg-secondary bg-opacity-10 shadow-sm d-flex align-items-center justify-content-center"
+                className={`rounded-4 p-4 text-center shadow-sm d-flex align-items-center justify-content-center ${darkMode ? 'bg-secondary bg-opacity-25' : 'bg-secondary bg-opacity-10'}`}
                 style={{ minHeight: '160px' }}
               >
                 <div className="spinner-border text-warning spinner-border-sm me-2" role="status"></div>
-                <span className="text-muted fw-bold small">Loading store offers...</span>
+                <span className={`fw-bold small ${subTextClass}`}>Loading store offers...</span>
               </div>
             ) : heroBanners.length > 0 && currentBanner ? (
               <div 
@@ -1684,7 +1737,7 @@ function App() {
             <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
               <h4 className="fw-bold m-0 fs-5">
                 {selectedCategory === 'All' ? 'Explore Our Products' : `${selectedCategory} Collection`}
-                <span className="fs-6 text-muted ms-2">({filteredProducts.length} items)</span>
+                <span className={`fs-6 ms-2 ${subTextClass}`}>({filteredProducts.length} items)</span>
               </h4>
               
               {selectedCategory !== 'All' && (
@@ -1696,12 +1749,12 @@ function App() {
 
             {loading ? (
               <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status"></div>
-                <p className="mt-2 text-muted">Loading live products...</p>
+                <div className="spinner-border text-warning" role="status"></div>
+                <p className={`mt-2 ${subTextClass}`}>Loading live products...</p>
               </div>
             ) : currentProducts.length === 0 ? (
-              <div className="text-center py-5 card border-0 shadow-sm p-5">
-                <h5 className="text-muted">No products found matching your search.</h5>
+              <div className={`text-center py-5 card border-0 shadow-sm p-5 ${cardBgClass}`}>
+                <h5 className={subTextClass}>No products found matching your search.</h5>
               </div>
             ) : (
               <>
@@ -1712,9 +1765,9 @@ function App() {
                     
                     return (
                       <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                        <div className="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column position-relative">
+                        <div className={`card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
                           
-                          {/* WISHLIST HEART ICON BUTTON ON CATALOG CARD */}
+                          {/* WISHLIST BUTTON */}
                           <button 
                             className="position-absolute top-0 end-0 m-2 btn btn-light rounded-circle shadow-sm border p-1 d-flex align-items-center justify-content-center"
                             style={{ width: '32px', height: '32px', zIndex: 5 }}
@@ -1725,7 +1778,7 @@ function App() {
                           </button>
 
                           <div 
-                            className="bg-white text-center p-2 p-md-3" 
+                            className={`text-center p-2 p-md-3 ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ height: '150px', cursor: 'pointer' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
@@ -1737,7 +1790,7 @@ function App() {
                             />
                           </div>
                           
-                          <div className="card-body p-2 p-md-3 d-flex flex-column bg-white border-top flex-grow-1">
+                          <div className={`card-body p-2 p-md-3 d-flex flex-column border-top flex-grow-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <span className="badge bg-secondary" style={{ fontSize: '9px' }}>{p.category || 'General'}</span>
                               
@@ -1751,7 +1804,7 @@ function App() {
                             </div>
 
                             <h6 
-                              className="card-title fw-bold text-dark text-truncate mb-1" 
+                              className="card-title fw-bold text-truncate mb-1" 
                               style={{ cursor: 'pointer', fontSize: '13px' }}
                               onClick={() => handleOpenProductDetail(p)}
                               title={p.name}
@@ -1759,7 +1812,7 @@ function App() {
                               {p.name}
                             </h6>
                             
-                            <p className="card-text text-muted small flex-grow-1 d-none d-md-block" style={{ fontSize: '11px' }}>
+                            <p className={`card-text small flex-grow-1 d-none d-md-block ${subTextClass}`} style={{ fontSize: '11px' }}>
                               {p.description ? p.description.substring(0, 50) + '...' : 'No description'}
                             </p>
                             
@@ -1792,7 +1845,7 @@ function App() {
                       <ul className="pagination pagination-md shadow-sm m-0">
                         <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
                           <button 
-                            className="page-link fw-bold px-3 py-2" 
+                            className={`page-link fw-bold px-3 py-2 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                           >
@@ -1803,7 +1856,7 @@ function App() {
                         {getVisiblePageNumbers().map((page) => (
                           <li key={page} className="page-item">
                             <button 
-                              className={`page-link fw-bold px-3 py-2 ${currentPage === page ? 'bg-primary text-white border-primary' : 'text-primary bg-white'}`} 
+                              className={`page-link fw-bold px-3 py-2 ${currentPage === page ? 'bg-warning text-dark border-warning' : darkMode ? 'bg-dark text-white border-secondary' : 'text-primary bg-white'}`} 
                               onClick={() => handlePageChange(page)}
                             >
                               {page}
@@ -1813,7 +1866,7 @@ function App() {
 
                         <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                           <button 
-                            className="page-link fw-bold px-3 py-2" 
+                            className={`page-link fw-bold px-3 py-2 ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                           >
@@ -1864,16 +1917,16 @@ function App() {
       {/* FLOATING AI ASSISTANT */}
       <div className="position-fixed bottom-0 end-0 m-2 m-md-3 z-3">
         {showChatbot ? (
-          <div className="card shadow-lg border-0" style={{ width: '280px', height: '360px' }}>
+          <div className={`card shadow-lg border-0 ${darkMode ? 'bg-dark text-white' : ''}`} style={{ width: '280px', height: '360px' }}>
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
               <span className="fw-bold small"><i className="bi bi-robot me-1"></i>Store AI Assistant</span>
               <button className="btn-close btn-close-white" onClick={() => setShowChatbot(false)}></button>
             </div>
-            <div className="card-body overflow-auto p-2 bg-light">
-              <div className="bg-white p-2 rounded mb-2 shadow-sm small">👋 Hello! How can I help you find products or track your order today?</div>
+            <div className={`card-body overflow-auto p-2 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
+              <div className={`p-2 rounded mb-2 shadow-sm small ${darkMode ? 'bg-secondary bg-opacity-25 text-white' : 'bg-white text-dark'}`}>👋 Hello! How can I help you find products or track your order today?</div>
             </div>
-            <div className="card-footer p-2 bg-white">
-              <input type="text" className="form-control form-control-sm" placeholder="Ask AI assistant..." />
+            <div className={`card-footer p-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+              <input type="text" className={`form-control form-control-sm ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Ask AI assistant..." />
             </div>
           </div>
         ) : (
@@ -1892,18 +1945,18 @@ function App() {
       {showCartModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-lg">
+            <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-dark text-white">
                 <h5 className="modal-header-title fw-bold text-warning mb-0">Your Shopping Cart</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCartModal(false)}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
                 {cart.length === 0 ? (
-                  <div className="text-center py-4 text-muted">Your cart is currently empty.</div>
+                  <div className={`text-center py-4 ${subTextClass}`}>Your cart is currently empty.</div>
                 ) : (
                   <div>
                     <div className="table-responsive">
-                      <table className="table table-hover align-middle">
+                      <table className={`table table-hover align-middle ${darkMode ? 'table-dark' : ''}`}>
                         <thead>
                           <tr>
                             <th>Product</th>
@@ -1919,7 +1972,7 @@ function App() {
                               <td className="fw-bold small">{item.name}</td>
                               <td className="small">₹{item.price}</td>
                               <td className="text-center">
-                                <div className="d-inline-flex align-items-center border rounded bg-light px-1">
+                                <div className={`d-inline-flex align-items-center border rounded px-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                                   <button 
                                     className="btn btn-sm btn-link text-danger text-decoration-none fw-bold px-2 py-0 fs-5"
                                     onClick={() => updateCartQty(item._id, -1)}
@@ -1947,10 +2000,10 @@ function App() {
                       </table>
                     </div>
 
-                    <div className="p-3 bg-light rounded border my-3">
+                    <div className={`p-3 rounded border my-3 ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                       <div className="mb-2">
-                        <span className="fw-bold small text-dark d-block mb-1">
-                          <i className="bi bi-tag-fill text-warning me-1"></i> Available Live Promo Coupons (Click to Apply):
+                        <span className="fw-bold small d-block mb-1">
+                          <i className="bi bi-tag-fill text-warning me-1"></i> Available Live Promo Coupons:
                         </span>
                         <div className="d-flex flex-wrap gap-2 mb-2">
                           {coupons.map((c, idx) => {
@@ -1973,16 +2026,16 @@ function App() {
                         </div>
                       </div>
 
-                      <label className="form-label fw-bold small text-secondary">Or Enter Discount Coupon Code Manually:</label>
+                      <label className={`form-label fw-bold small ${subTextClass}`}>Or Enter Discount Coupon Code Manually:</label>
                       <form onSubmit={handleApplyCoupon} className="input-group">
                         <input 
                           type="text" 
-                          className="form-control" 
+                          className={`form-control ${darkMode ? 'bg-dark text-white border-secondary' : ''}`} 
                           placeholder="e.g. PAPAJIONTOP, NV7GOAT, TECH10" 
                           value={couponCode} 
                           onChange={(e) => setCouponCode(e.target.value)} 
                         />
-                        <button type="submit" className="btn btn-dark fw-bold">Apply Code</button>
+                        <button type="submit" className="btn btn-dark fw-bold border-secondary">Apply Code</button>
                       </form>
                       {couponMessage && (
                         <small className={`fw-bold mt-1 d-block ${appliedCoupon ? 'text-success' : 'text-danger'}`}>
@@ -1994,7 +2047,7 @@ function App() {
                     <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
                       <div>
                         {appliedCoupon && discountAmount > 0 && (
-                          <span className="text-muted text-decoration-line-through d-block small">Subtotal: ₹{rawCartTotal}</span>
+                          <span className={`text-decoration-line-through d-block small ${subTextClass}`}>Subtotal: ₹{rawCartTotal}</span>
                         )}
                         <h4 className="fw-bold m-0 fs-5">Final Total: <span className="text-success">₹{finalCartTotal}</span></h4>
                       </div>
@@ -2017,7 +2070,7 @@ function App() {
       {showCheckoutModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-lg">
+            <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-success text-white">
                 <h5 className="modal-title fw-bold">📦 Secure Shipping & Payment Checkout</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowCheckoutModal(false)}></button>
@@ -2025,7 +2078,7 @@ function App() {
               <div className="modal-body p-3 p-md-4">
                 
                 {savedAddresses.length > 0 && (
-                  <div className="p-3 bg-light rounded border mb-4 shadow-sm">
+                  <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                     <label className="form-label fw-bold small text-primary mb-2">
                       <i className="bi bi-geo-alt-fill me-1"></i>Select from Saved Shipping Addresses:
                     </label>
@@ -2034,7 +2087,7 @@ function App() {
                         <button
                           key={addr.id}
                           type="button"
-                          className="btn btn-sm btn-outline-dark fw-bold text-start p-2 rounded shadow-sm"
+                          className={`btn btn-sm fw-bold text-start p-2 rounded shadow-sm ${darkMode ? 'btn-outline-light' : 'btn-outline-dark'}`}
                           style={{ fontSize: '11px', maxWidth: '220px' }}
                           onClick={() => {
                             setShippingName(addr.name);
@@ -2044,7 +2097,7 @@ function App() {
                         >
                           <span className="badge bg-secondary mb-1">{addr.title}</span>
                           <span className="d-block text-truncate fw-bold">{addr.name} ({addr.phone})</span>
-                          <span className="d-block text-truncate text-muted">{addr.address}</span>
+                          <span className={`d-block text-truncate ${subTextClass}`}>{addr.address}</span>
                         </button>
                       ))}
                     </div>
@@ -2055,19 +2108,19 @@ function App() {
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label fw-bold small">Full Name</label>
-                      <input type="text" className="form-control" required value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Enter your full name" />
+                      <input type="text" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} required value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Enter your full name" />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-bold small">Phone Number</label>
-                      <input type="tel" className="form-control" required value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="+91 9876543210" />
+                      <input type="tel" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} required value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="+91 9876543210" />
                     </div>
                     <div className="col-12">
                       <label className="form-label fw-bold small">Complete Shipping Address</label>
-                      <textarea className="form-control" rows="2" required value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="House No, Building, Street, Area, Pincode"></textarea>
+                      <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="2" required value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="House No, Building, Street, Area, Pincode"></textarea>
                     </div>
                     <div className="col-12">
                       <label className="form-label fw-bold small">Select Payment Method</label>
-                      <select className="form-select" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      <select className={`form-select ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                         <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
                         <option value="UPI / GPay / PhonePe">UPI / GPay / PhonePe</option>
                         <option value="Credit / Debit Card">Credit / Debit Card</option>
@@ -2075,9 +2128,9 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-light rounded mt-4 border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <div className={`p-3 rounded mt-4 border d-flex justify-content-between align-items-center flex-wrap gap-2 ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                     <div>
-                      <span className="text-muted small d-block">Payable Amount ({cartItemCount} Items)</span>
+                      <span className={`small d-block ${subTextClass}`}>Payable Amount ({cartItemCount} Items)</span>
                       <span className="fs-5 fw-bold text-success">₹{finalCartTotal}</span>
                     </div>
                     <div className="d-flex gap-2">
@@ -2096,7 +2149,7 @@ function App() {
       {showOrderTracking && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-lg">
+            <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title fw-bold mb-0">
                   <i className="bi bi-truck me-2"></i>My Placed Orders & Live Tracking
@@ -2106,7 +2159,7 @@ function App() {
               </div>
               <div className="modal-body p-3 p-md-4">
                 {userOrders.length === 0 ? (
-                  <div className="text-center py-5 text-muted">
+                  <div className={`text-center py-5 ${subTextClass}`}>
                     <i className="bi bi-box-seam fs-1 text-secondary d-block mb-2"></i>
                     <h5>No orders placed yet for this account.</h5>
                   </div>
@@ -2116,11 +2169,11 @@ function App() {
                       const stepNum = getOrderStep(ord.status);
 
                       return (
-                        <div key={ord._id} className="card border shadow-sm p-3 bg-white rounded-3">
+                        <div key={ord._id} className={`card border shadow-sm p-3 rounded-3 ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-white'}`}>
                           <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                             <div>
                               <span className="fw-bold text-primary small">Order #{ord._id}</span>
-                              <small className="text-muted ms-2 d-block d-sm-inline">
+                              <small className={`ms-2 d-block d-sm-inline ${subTextClass}`}>
                                 ({ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent Order'})
                               </small>
                             </div>
@@ -2136,14 +2189,14 @@ function App() {
                           </div>
 
                           {(!ord.status || (!ord.status.includes('Return') && !ord.status.includes('Refund') && ord.status !== 'Cancelled')) && (
-                            <div className="mb-4 p-2 p-md-3 bg-light rounded border">
+                            <div className={`mb-4 p-2 p-md-3 rounded border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                               <div className="d-flex justify-content-between align-items-center position-relative">
                                 <div className="position-absolute top-50 start-0 translate-middle-y bg-secondary bg-opacity-25" style={{ height: '4px', width: '100%', zIndex: 0 }}></div>
                                 <div className="position-absolute top-50 start-0 translate-middle-y bg-success transition-all" style={{ height: '4px', width: `${((stepNum - 1) / 3) * 100}%`, zIndex: 1, transition: 'width 0.4s ease' }}></div>
 
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
                                   <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 1 ? 'bg-success text-white' : 'bg-secondary text-white'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>✓</div>
-                                  <small className="fw-bold d-block mt-1 text-dark" style={{ fontSize: '10px' }}>Placed</small>
+                                  <small className="fw-bold d-block mt-1" style={{ fontSize: '10px' }}>Placed</small>
                                 </div>
                                 <div className="text-center position-relative" style={{ zIndex: 2 }}>
                                   <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto fw-bold ${stepNum >= 2 ? 'bg-success text-white' : 'bg-light text-secondary border border-2'}`} style={{ width: '28px', height: '28px', fontSize: '12px' }}>{stepNum >= 2 ? '✓' : '2'}</div>
@@ -2162,13 +2215,13 @@ function App() {
                           )}
 
                           <div className="mb-3">
-                            <span className="fw-bold small text-secondary d-block mb-1">Purchased Products:</span>
+                            <span className={`fw-bold small d-block mb-1 ${subTextClass}`}>Purchased Products:</span>
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
-                                <div key={idx} className="d-flex align-items-center gap-2 p-2 rounded border bg-light shadow-sm" style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
+                                <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
                                   <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded border bg-white" width="40" height="40" style={{ objectFit: 'cover' }} />
                                   <div>
-                                    <div className="fw-bold small text-dark text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
+                                    <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
                                     <span className="badge bg-secondary" style={{ fontSize: '9px' }}>Qty: {item.qty || 1}</span>
                                   </div>
                                 </div>
@@ -2179,7 +2232,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
                             <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className="badge bg-light text-dark border me-1 small">{ord.paymentMethod || 'COD'}</span>
+                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light text-dark'}`}>{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
                                 <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
@@ -2207,7 +2260,7 @@ function App() {
       {showReviewModal && selectedOrderForReview && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg">
+            <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-warning text-dark">
                 <h5 className="modal-title fw-bold">⭐ Rate & Review Delivered Product</h5>
                 <button type="button" className="btn-close" onClick={() => setShowReviewModal(false)}></button>
@@ -2224,7 +2277,7 @@ function App() {
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Your Review Comment:</label>
-                    <textarea className="form-control" rows="3" required placeholder="Share your experience..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}></textarea>
+                    <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="3" required placeholder="Share your experience..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}></textarea>
                   </div>
                   <div className="d-flex justify-content-end gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={() => setShowReviewModal(false)}>Cancel</button>
@@ -2241,7 +2294,7 @@ function App() {
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg">
+            <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-danger text-white">
                 <h5 className="modal-title fw-bold">🔄 Request Order Return / Replacement</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowReviewModalReturn(false)}></button>
@@ -2250,14 +2303,14 @@ function App() {
                 <form onSubmit={handleSubmitReturnRequest}>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Select Return Type:</label>
-                    <select className="form-select fw-bold" value={returnTypeOption} onChange={(e) => setReturnTypeOption(e.target.value)}>
+                    <select className={`form-select fw-bold ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} value={returnTypeOption} onChange={(e) => setReturnTypeOption(e.target.value)}>
                       <option value="Refund">💵 Money Refund</option>
                       <option value="Replacement">🔄 Item Replacement</option>
                     </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Select Reason:</label>
-                    <select className="form-select" value={returnReason} onChange={(e) => setReturnReason(e.target.value)}>
+                    <select className={`form-select ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} value={returnReason} onChange={(e) => setReturnReason(e.target.value)}>
                       <option value="Damaged or Defective Item">Damaged or Defective Item</option>
                       <option value="Wrong Item Shipped">Wrong Item Shipped</option>
                       <option value="Size or Fitting Issue">Size or Fitting Issue</option>
@@ -2265,7 +2318,7 @@ function App() {
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Comments:</label>
-                    <textarea className="form-control" rows="3" required placeholder="Explain details..." value={returnComments} onChange={(e) => setReturnComments(e.target.value)}></textarea>
+                    <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="3" required placeholder="Explain details..." value={returnComments} onChange={(e) => setReturnComments(e.target.value)}></textarea>
                   </div>
                   <div className="d-flex justify-content-end gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={() => setShowReviewModalReturn(false)}>Cancel</button>
@@ -2282,22 +2335,22 @@ function App() {
       {showSignupModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg p-4">
+            <div className={`modal-content border-0 shadow-lg p-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="modal-title fw-bold">📝 Customer Sign Up</h5>
-                <button type="button" className="btn-close" onClick={() => setShowSignupModal(false)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowSignupModal(false)}></button>
               </div>
               <form onSubmit={handleEmailSignupSubmit}>
                 <div className="mb-2">
-                  <input type="text" className="form-control" placeholder="Full Name" required value={signupData.name} onChange={(e) => setSignupData({...signupData, name: e.target.value})} />
+                  <input type="text" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Full Name" required value={signupData.name} onChange={(e) => setSignupData({...signupData, name: e.target.value})} />
                 </div>
                 <div className="mb-2">
-                  <input type="email" className="form-control" placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} />
+                  <input type="email" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Email ID" required value={signupData.email} onChange={(e) => setSignupData({...signupData, email: e.target.value})} />
                 </div>
                 <div className="mb-2 input-group">
                   <input 
                     type={showSignupPassword ? "text" : "password"} 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     placeholder="Password" 
                     required 
                     value={signupData.password} 
@@ -2312,15 +2365,15 @@ function App() {
                   </button>
                 </div>
                 <div className="mb-2">
-                  <input type="tel" className="form-control" placeholder="Mobile Number" required value={signupData.mobile} onChange={(e) => setSignupData({...signupData, mobile: e.target.value})} />
+                  <input type="tel" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Mobile Number" required value={signupData.mobile} onChange={(e) => setSignupData({...signupData, mobile: e.target.value})} />
                 </div>
                 <div className="mb-2">
-                  <textarea className="form-control" rows="2" placeholder="Shipping Address" required value={signupData.address} onChange={(e) => setSignupData({...signupData, address: e.target.value})}></textarea>
+                  <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="2" placeholder="Shipping Address" required value={signupData.address} onChange={(e) => setSignupData({...signupData, address: e.target.value})}></textarea>
                 </div>
                 <div className="mb-3">
-                  <input type="text" className="form-control" placeholder="Pincode" required value={signupData.pincode} onChange={(e) => setSignupData({...signupData, pincode: e.target.value})} />
+                  <input type="text" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Pincode" required value={signupData.pincode} onChange={(e) => setSignupData({...signupData, pincode: e.target.value})} />
                 </div>
-                <button type="submit" className="btn btn-warning w-100 fw-bold py-2">Register & Sign Up</button>
+                <button type="submit" className="btn btn-warning w-100 fw-bold py-2 text-dark">Register & Sign Up</button>
               </form>
             </div>
           </div>
@@ -2331,19 +2384,19 @@ function App() {
       {showLoginModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg p-4">
+            <div className={`modal-content border-0 shadow-lg p-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="fw-bold mb-0 text-warning">🔓 Sign In to TechStore</h5>
-                <button type="button" className="btn-close" onClick={() => setShowLoginModal(false)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => setShowLoginModal(false)}></button>
               </div>
               <form onSubmit={handleEmailLoginSubmit}>
                 <div className="mb-3">
-                  <input type="email" className="form-control" placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} />
+                  <input type="email" className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} placeholder="Email ID" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} />
                 </div>
                 <div className="mb-3 input-group">
                   <input 
                     type={showLoginPassword ? "text" : "password"} 
-                    className="form-control" 
+                    className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                     placeholder="Password" 
                     required 
                     value={loginData.password} 
@@ -2357,7 +2410,7 @@ function App() {
                     <i className={`bi ${showLoginPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
                   </button>
                 </div>
-                <button type="submit" className="btn btn-dark w-100 fw-bold py-2 text-warning">Sign In</button>
+                <button type="submit" className="btn btn-dark w-100 fw-bold py-2 text-warning border-secondary">Sign In</button>
               </form>
             </div>
           </div>
