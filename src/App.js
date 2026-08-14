@@ -519,34 +519,66 @@ function App() {
     }
   };
 
-  // 🟢 GOOGLE LOGIN WITH ACCOUNT WISHLIST ISOLATION
+  // 🟢 BULLET-PROOF GOOGLE LOGIN WITH INSTANT STATE AND BACKEND SYNC
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const decodedUser = jwtDecode(credentialResponse.credential);
-      const res = await axios.post(`${BASE_URL}/api/auth/google`, {
-        name: decodedUser.name,
-        email: decodedUser.email,
-        googleId: decodedUser.sub,
-        avatar: decodedUser.picture
-      });
+      if (!credentialResponse?.credential) {
+        alert("Google token missing. Please try again.");
+        return;
+      }
 
-      const googleUserData = res.data.user;
-      setUser(googleUserData);
-      setShippingName(googleUserData.name || '');
+      const decodedUser = jwtDecode(credentialResponse.credential);
+      
+      // Instantly prepare active user profile
+      const localUserProfile = {
+        name: decodedUser.name || 'Google User',
+        email: decodedUser.email ? decodedUser.email.toLowerCase().trim() : '',
+        googleId: decodedUser.sub,
+        picture: decodedUser.picture || '',
+        avatar: decodedUser.picture || '',
+        mobile: '',
+        address: '',
+        pincode: '',
+        wishlist: [],
+        cart: []
+      };
+
+      // Set immediate local state so UI activates instantly
+      setUser(localUserProfile);
+      setShippingName(localUserProfile.name);
       setProfileFormData({
-        name: googleUserData.name || '',
-        mobile: googleUserData.mobile || '',
-        address: googleUserData.address || '',
-        pincode: googleUserData.pincode || ''
+        name: localUserProfile.name,
+        mobile: '',
+        address: '',
+        pincode: ''
       });
-      // 🟢 Immediately set correct user wishlist & cart from DB response
-      setWishlist(googleUserData.wishlist || []);
-      setCart(googleUserData.cart || []);
-      localStorage.setItem('googleUser', JSON.stringify(googleUserData));
+      localStorage.setItem('googleUser', JSON.stringify(localUserProfile));
+
+      // Synchronize with backend API safely
+      try {
+        const res = await axios.post(`${BASE_URL}/api/auth/google`, {
+          name: localUserProfile.name,
+          email: localUserProfile.email,
+          googleId: localUserProfile.googleId,
+          avatar: localUserProfile.avatar
+        });
+
+        if (res.data && res.data.user) {
+          const dbUser = { ...localUserProfile, ...res.data.user };
+          setUser(dbUser);
+          setWishlist(dbUser.wishlist || []);
+          setCart(dbUser.cart || []);
+          localStorage.setItem('googleUser', JSON.stringify(dbUser));
+        }
+      } catch (backendErr) {
+        console.warn("Backend sync notice:", backendErr.message);
+      }
+
       alert(`🎉 Welcome ${decodedUser.name}! Verified via Google Cloud.`);
       fetchCoupons();
     } catch (err) {
-      console.error("JWT Decode Error:", err);
+      console.error("Google Auth Decode Error:", err);
+      alert("Sign-In error occurred. Please try again.");
     }
   };
 
@@ -1449,8 +1481,8 @@ function App() {
                   <button 
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
                       getProductStock(selectedProductDetail) <= 0 
-                      ? 'btn-secondary disabled' 
-                      : 'btn-warning'
+                        ? 'btn-secondary disabled' 
+                        : 'btn-warning'
                     }`}
                     disabled={getProductStock(selectedProductDetail) <= 0}
                     onClick={() => {
@@ -1980,7 +2012,7 @@ function App() {
                         className="btn btn-success fw-bold px-4 py-2" 
                         onClick={() => { setShowCartModal(false); setShowCheckoutModal(true); }}
                       >
-                        Proceed to Checkout &rrarr;
+                        Proceed to Checkout &rarr;
                       </button>
                     </div>
                   </div>
@@ -2002,7 +2034,6 @@ function App() {
               </div>
               <div className="modal-body p-3 p-md-4">
                 
-                {/* QUICK SELECT SAVED ADDRESSES FOR CHECKOUT */}
                 {savedAddresses.length > 0 && (
                   <div className="p-3 bg-light rounded border mb-4 shadow-sm">
                     <label className="form-label fw-bold small text-primary mb-2">
