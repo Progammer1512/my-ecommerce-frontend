@@ -136,10 +136,8 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // FULL-PAGE PRODUCT DETAIL STATE & LINEAR NAVIGATION STACK
+  // FULL-PAGE PRODUCT DETAIL STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
-  const [navigationStack, setNavigationStack] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
 
   const [allReviews, setAllReviews] = useState([]);
 
@@ -181,18 +179,115 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 SMART MODAL OPENER WITH HISTORY
-  const openModalWithHistory = (setterFn) => {
-    setterFn(true);
-    window.history.pushState({ modalOpen: true }, '', window.location.href);
+  // =========================================================================
+  // 🌟 UNIVERSAL NAVIGATION STACK & VIEW STATE MANAGER
+  // =========================================================================
+  const applyViewState = (state) => {
+    // 1. Reset all modals and details first
+    setShowAppDownloadModal(false);
+    setShowCartModal(false);
+    setShowCheckoutModal(false);
+    setShowOrderTracking(false);
+    setShowProfileDrawer(false);
+    setShowEditProfileModal(false);
+    setShowAccountSettingsModal(false);
+    setShowPrivacyPolicyModal(false);
+    setShowCategoryMenu(false);
+    setShowSignupModal(false);
+    setShowLoginModal(false);
+    setShowReviewModal(false);
+    setShowReviewModalReturn(false);
+    setSelectedProductDetail(null);
+
+    if (!state || !state.view || state.view === 'HOME') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      return;
+    }
+
+    // 2. Open the exact view stored in history state
+    switch (state.view) {
+      case 'PRODUCT_DETAIL':
+        setSelectedProductDetail(state.product);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        break;
+      case 'CART':
+        setShowCartModal(true);
+        break;
+      case 'CHECKOUT':
+        setShowCheckoutModal(true);
+        break;
+      case 'ORDER_TRACKING':
+        setShowOrderTracking(true);
+        break;
+      case 'PROFILE_DRAWER':
+        setShowProfileDrawer(true);
+        break;
+      case 'EDIT_PROFILE':
+        setShowEditProfileModal(true);
+        break;
+      case 'ACCOUNT_SETTINGS':
+        setShowAccountSettingsModal(true);
+        break;
+      case 'PRIVACY_POLICY':
+        setShowPrivacyPolicyModal(true);
+        break;
+      case 'CATEGORY_MENU':
+        setShowCategoryMenu(true);
+        break;
+      case 'SIGNUP':
+        setShowSignupModal(true);
+        break;
+      case 'LOGIN':
+        setShowLoginModal(true);
+        break;
+      case 'REVIEW':
+        setSelectedOrderForReview(state.order);
+        setShowReviewModal(true);
+        break;
+      case 'RETURN':
+        setSelectedOrderForReturn(state.order);
+        setShowReviewModalReturn(true);
+        break;
+      case 'APP_DOWNLOAD':
+        setShowAppDownloadModal(true);
+        break;
+      default:
+        break;
+    }
   };
 
-  // 🟢 SMART MODAL CLOSER WITH HISTORY CLEANUP
-  const closeModalCleanly = (setterFn) => {
-    setterFn(false);
-    if (window.history.state && window.history.state.modalOpen) {
-      window.history.back();
+  const navigateToView = (viewName, extraData = {}) => {
+    const newState = { view: viewName, ...extraData };
+    window.history.pushState(newState, '', window.location.href);
+    applyViewState(newState);
+  };
+
+  const navigateBack = () => {
+    window.history.back();
+  };
+
+  // 📲 UNIVERSAL POPSTATE (BACK GESTURE) LISTENER
+  useEffect(() => {
+    if (!window.history.state || !window.history.state.view) {
+      window.history.replaceState({ view: 'HOME' }, '', window.location.href);
+    } else {
+      applyViewState(window.history.state);
     }
+
+    const handlePopState = (event) => {
+      applyViewState(event.state || { view: 'HOME' });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleOpenProductDetail = (p) => {
+    navigateToView('PRODUCT_DETAIL', { product: p });
+  };
+
+  const handleResetToAllCatalog = () => {
+    navigateToView('HOME');
   };
 
   // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
@@ -206,7 +301,7 @@ function App() {
     if (!hasSeen) {
       const timer = setTimeout(() => {
         if (!isRunningStandalone()) {
-          setShowAppDownloadModal(true);
+          navigateToView('APP_DOWNLOAD');
           sessionStorage.setItem('hasSeenAppPopup', 'true');
         }
       }, 2000);
@@ -245,76 +340,8 @@ function App() {
       }
     } else {
       alert("📱 To install TechStore App:\n1. Tap your browser's 3 dots menu (⋮)\n2. Click 'Install App' or 'Add to Home Screen'!");
-      setShowAppDownloadModal(false);
+      navigateBack();
     }
-  };
-
-  // 🟢 MOBILE GESTURE BACK / SWIPE BACK HANDLER
-  useEffect(() => {
-    const handlePopState = (event) => {
-      if (showAppDownloadModal) { setShowAppDownloadModal(false); return; }
-      if (showAccountSettingsModal) { setShowAccountSettingsModal(false); return; }
-      if (showEditProfileModal) { setShowEditProfileModal(false); return; }
-      if (showPrivacyPolicyModal) { setShowPrivacyPolicyModal(false); return; }
-      if (showOrderTracking) { setShowOrderTracking(false); return; }
-      if (showProfileDrawer) { setShowProfileDrawer(false); return; }
-      if (showCartModal) { setShowCartModal(false); return; }
-      if (showCheckoutModal) { setShowCheckoutModal(false); return; }
-      if (showCategoryMenu) { setShowCategoryMenu(false); return; }
-      if (showSignupModal) { setShowSignupModal(false); return; }
-      if (showLoginModal) { setShowLoginModal(false); return; }
-      if (showReviewModal) { setShowReviewModal(false); return; }
-      if (showReturnModal) { setShowReviewModalReturn(false); return; }
-
-      if (event.state && typeof event.state.stackIdx === 'number') {
-        const targetIdx = event.state.stackIdx;
-        if (targetIdx >= 0 && targetIdx < navigationStack.length) {
-          setCurrentIndex(targetIdx);
-          setSelectedProductDetail(navigationStack[targetIdx]);
-          setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
-          return;
-        }
-      }
-
-      setSelectedProductDetail(null);
-      setCurrentIndex(-1);
-      setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [
-    showAppDownloadModal, showAccountSettingsModal, showEditProfileModal, showPrivacyPolicyModal,
-    showOrderTracking, showProfileDrawer, showCartModal, showCheckoutModal, showCategoryMenu,
-    showSignupModal, showLoginModal, showReviewModal, showReturnModal, navigationStack
-  ]);
-
-  // HELPER TO OPEN PRODUCT DETAILS
-  const handleOpenProductDetail = (p) => {
-    let newStack;
-    let newIdx;
-
-    if (currentIndex >= 0 && currentIndex < navigationStack.length) {
-      newStack = [...navigationStack.slice(0, currentIndex + 1), p];
-      newIdx = newStack.length - 1;
-    } else {
-      newStack = [p];
-      newIdx = 0;
-    }
-
-    setNavigationStack(newStack);
-    setCurrentIndex(newIdx);
-    setSelectedProductDetail(p);
-
-    window.history.pushState({ stackIdx: newIdx }, '', window.location.href);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  };
-
-  const handleResetToAllCatalog = () => {
-    setSelectedProductDetail(null);
-    setNavigationStack([]);
-    setCurrentIndex(-1);
-    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   const fetchCoupons = async () => {
@@ -553,8 +580,8 @@ function App() {
         pincode: newUser.pincode || ''
       });
       localStorage.setItem('googleUser', JSON.stringify(newUser));
-      setShowSignupModal(false);
       setSignupData({ name: '', email: '', password: '', mobile: '', address: '', pincode: '' });
+      navigateBack();
     } catch (err) { 
       alert(err.response?.data?.message || 'Signup failed. Please check backend connection.'); 
     }
@@ -579,9 +606,9 @@ function App() {
       if (loggedUser.wishlist && loggedUser.wishlist.length > 0) setWishlist(loggedUser.wishlist);
       if (loggedUser.cart && loggedUser.cart.length > 0) setCart(loggedUser.cart);
       localStorage.setItem('googleUser', JSON.stringify(loggedUser));
-      setShowLoginModal(false);
       setLoginData({ email: '', password: '' });
       fetchCoupons();
+      navigateBack();
     } catch (err) { alert(err.response?.data?.message || 'Login failed.'); }
   };
 
@@ -608,7 +635,7 @@ function App() {
       localStorage.setItem('googleUser', JSON.stringify(updatedUser));
 
       alert('✅ Profile updated successfully in MongoDB!');
-      setShowEditProfileModal(false);
+      navigateBack();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update profile in database.');
     }
@@ -623,11 +650,11 @@ function App() {
       await axios.delete(`${BASE_URL}/api/auth/profile`, { data: { email: user.email } });
       alert('🗑️ Your account has been permanently deleted from MongoDB.');
       handleGoogleLogout();
-      setShowAccountSettingsModal(false);
+      navigateBack();
     } catch (err) {
       alert('🗑️ Account deleted successfully!');
       handleGoogleLogout();
-      setShowAccountSettingsModal(false);
+      navigateBack();
     }
   };
 
@@ -696,10 +723,8 @@ function App() {
   const handleGoogleLogout = () => {
     googleLogout();
     setUser(null);
-    setShowProfileDrawer(false);
-    setShowEditProfileModal(false);
-    setShowAccountSettingsModal(false);
     localStorage.removeItem('googleUser');
+    navigateToView('HOME');
     alert("Logged out from Account.");
   };
 
@@ -785,7 +810,6 @@ function App() {
 
   // 🟢 SMART HELPER: OPEN FULL PRODUCT DETAILS DIRECTLY FROM CART ITEM
   const handleViewProductFromCart = (cartItem) => {
-    setShowCartModal(false);
     const matched = products.find(p => p._id === cartItem._id || p.name === cartItem.name);
     if (matched) {
       handleOpenProductDetail(matched);
@@ -920,8 +944,7 @@ function App() {
       setAppliedCoupon(null);
       setCouponCode('');
       setCouponCodeMessage('');
-      setShowCheckoutModal(false);
-      setShowCartModal(false);
+      navigateToView('HOME');
     } catch (err) {
       console.error('Order Push Error:', err);
       alert('Order Placement Failed: ' + (err.response?.data?.message || err.message));
@@ -929,10 +952,9 @@ function App() {
   };
 
   const handleOpenReviewModal = (ord) => {
-    setSelectedOrderForReview(ord);
     setRatingStars(5);
     setReviewComment('');
-    openModalWithHistory(setShowReviewModal);
+    navigateToView('REVIEW', { order: ord });
   };
 
   const handleSubmitReview = async (e) => {
@@ -960,15 +982,14 @@ function App() {
     const updatedRev = { ...submittedReviews, [selectedOrderForReview._id]: reviewData };
     setSubmittedReviews(updatedRev);
     localStorage.setItem('submittedReviews', JSON.stringify(updatedRev));
-    closeModalCleanly(setShowReviewModal);
+    navigateBack();
   };
 
   const handleOpenReturnModal = (ord) => {
-    setSelectedOrderForReturn(ord);
     setReturnTypeOption('Refund');
     setReturnReason('Damaged or Defective Item');
     setReturnComments('');
-    openModalWithHistory(setShowReviewModalReturn);
+    navigateToView('RETURN', { order: ord });
   };
 
   const handleSubmitReturnRequest = async (e) => {
@@ -987,11 +1008,10 @@ function App() {
       alert('Return request submitted.');
     }
 
-    closeModalCleanly(setShowReviewModalReturn);
+    navigateBack();
   };
 
   const handleNavigateToProduct = (item) => {
-    setShowOrderTracking(false);
     const matchingProd = products.find(p => p._id === item.product || p._id === item._id || p.name === item.name);
     if (matchingProd) {
       handleOpenProductDetail(matchingProd);
@@ -1067,7 +1087,7 @@ function App() {
             {user ? (
               <button 
                 className="btn btn-outline-warning btn-sm rounded-pill px-2 px-sm-3 py-1 fw-bold d-inline-flex align-items-center gap-1 gap-sm-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
-                onClick={() => openModalWithHistory(setShowProfileDrawer)}
+                onClick={() => navigateToView('PROFILE_DRAWER')}
                 title="Open Profile Menu"
               >
                 <img 
@@ -1083,8 +1103,8 @@ function App() {
               </button>
             ) : (
               <div className="d-flex align-items-center gap-1 gap-sm-2">
-                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1" onClick={() => openModalWithHistory(setShowLoginModal)}>Sign In</button>
-                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1 text-dark" onClick={() => openModalWithHistory(setShowSignupModal)}>Sign Up</button>
+                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1" onClick={() => navigateToView('LOGIN')}>Sign In</button>
+                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1 text-dark" onClick={() => navigateToView('SIGNUP')}>Sign Up</button>
                 <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '28px', width: '28px' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
                 </div>
@@ -1094,7 +1114,7 @@ function App() {
             {/* CART BUTTON */}
             <button 
               className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm text-dark d-flex align-items-center gap-1"
-              onClick={() => openModalWithHistory(setShowCartModal)}
+              onClick={() => navigateToView('CART')}
             >
               <i className="bi bi-cart3"></i>
               <span>Cart</span>
@@ -1116,7 +1136,7 @@ function App() {
           {/* MENU / CATEGORIES BUTTON */}
           <button 
             className="btn btn-warning btn-sm fw-bold px-3 py-2 shadow-sm d-flex align-items-center justify-content-center gap-1 text-dark rounded-pill"
-            onClick={() => openModalWithHistory(setShowCategoryMenu)}
+            onClick={() => navigateToView('CATEGORY_MENU')}
             title="Browse Categories"
             style={{ whiteSpace: 'nowrap', height: '40px' }}
           >
@@ -1154,7 +1174,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center p-3 p-md-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               
               <div className="d-flex justify-content-end">
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowAppDownloadModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
 
               <div className="my-2">
@@ -1178,7 +1198,7 @@ function App() {
                 <button 
                   type="button" 
                   className={`btn btn-link btn-sm text-decoration-none small ${subTextClass}`}
-                  onClick={() => closeModalCleanly(setShowAppDownloadModal)}
+                  onClick={navigateBack}
                 >
                   Maybe Later
                 </button>
@@ -1208,16 +1228,13 @@ function App() {
                   <h6 className="fw-bold text-warning mb-0 text-truncate">{user.name}</h6>
                   <small className="text-white-50 d-block text-truncate" style={{ fontSize: '11px' }}>{user.email}</small>
                 </div>
-                <button type="button" className="btn-close btn-close-white ms-auto" onClick={() => closeModalCleanly(setShowProfileDrawer)}></button>
+                <button type="button" className="btn-close btn-close-white ms-auto" onClick={navigateBack}></button>
               </div>
 
               <div className={`modal-body p-2 d-flex flex-column gap-2 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
                 <button 
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
-                  onClick={() => {
-                    setShowProfileDrawer(false);
-                    openModalWithHistory(setShowEditProfileModal);
-                  }}
+                  onClick={() => navigateToView('EDIT_PROFILE')}
                 >
                   <span><i className="bi bi-person-circle text-warning me-2 fs-5"></i>My Profile</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
@@ -1226,9 +1243,8 @@ function App() {
                 <button 
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
                   onClick={() => {
-                    setShowProfileDrawer(false);
                     fetchLiveOrders();
-                    openModalWithHistory(setShowOrderTracking);
+                    navigateToView('ORDER_TRACKING');
                   }}
                 >
                   <div className="d-flex align-items-center">
@@ -1242,10 +1258,7 @@ function App() {
 
                 <button 
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
-                  onClick={() => {
-                    setShowProfileDrawer(false);
-                    openModalWithHistory(setShowAccountSettingsModal);
-                  }}
+                  onClick={() => navigateToView('ACCOUNT_SETTINGS')}
                 >
                   <span><i className="bi bi-gear-fill text-secondary me-2 fs-5"></i>Account Settings</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
@@ -1253,10 +1266,7 @@ function App() {
 
                 <button 
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between shadow-sm ${darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'}`}
-                  onClick={() => {
-                    setShowProfileDrawer(false);
-                    openModalWithHistory(setShowPrivacyPolicyModal);
-                  }}
+                  onClick={() => navigateToView('PRIVACY_POLICY')}
                 >
                   <span><i className="bi bi-shield-lock-fill text-info me-2 fs-5"></i>Privacy Policy</span>
                   <i className="bi bi-chevron-right text-muted small"></i>
@@ -1285,7 +1295,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="fw-bold mb-0 text-warning"><i className="bi bi-person-bounding-box me-2"></i>My Profile Details</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowEditProfileModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
 
               <form onSubmit={handleUpdateProfileSubmit}>
@@ -1335,7 +1345,7 @@ function App() {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => closeModalCleanly(setShowEditProfileModal)}>Cancel</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={navigateBack}>Cancel</button>
                   <button type="submit" className="btn btn-warning fw-bold px-4 text-dark">Save & Update Profile</button>
                 </div>
               </form>
@@ -1351,7 +1361,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 overflow-hidden ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="fw-bold mb-0 text-warning"><i className="bi bi-gear-fill me-2"></i>Account Settings</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowAccountSettingsModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
 
               <div className="overflow-auto pe-1" style={{ maxHeight: '70vh' }}>
@@ -1409,7 +1419,11 @@ function App() {
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                            <div 
+                              style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
+                              onClick={() => handleOpenProductDetail(item)}
+                              title="Click to view details"
+                            >
                               <img 
                                 src={item.image || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
@@ -1417,7 +1431,7 @@ function App() {
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                               />
                             </div>
-                            <div className="flex-grow-1 text-truncate">
+                            <div className="flex-grow-1 text-truncate" style={{ cursor: 'pointer' }} onClick={() => handleOpenProductDetail(item)}>
                               <span className="fw-bold small text-truncate d-block">{item.name}</span>
                               <span className="text-success fw-bold small">₹{item.price}</span>
                             </div>
@@ -1524,7 +1538,7 @@ function App() {
               </div>
 
               <div className="d-flex justify-content-end pt-3 border-top mt-2">
-                <button type="button" className="btn btn-secondary fw-bold" onClick={() => closeModalCleanly(setShowAccountSettingsModal)}>Close Settings</button>
+                <button type="button" className="btn btn-secondary fw-bold" onClick={navigateBack}>Close Settings</button>
               </div>
             </div>
           </div>
@@ -1538,7 +1552,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="fw-bold mb-0 text-info"><i className="bi bi-shield-lock-fill me-2"></i>Store Privacy Policy</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowPrivacyPolicyModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
 
               <div className={`p-3 rounded border overflow-auto ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`} style={{ maxHeight: '320px' }}>
@@ -1557,7 +1571,7 @@ function App() {
               </div>
 
               <div className="d-flex justify-content-end mt-3 pt-2 border-top">
-                <button type="button" className="btn btn-info fw-bold text-white px-4" onClick={() => closeModalCleanly(setShowPrivacyPolicyModal)}>I Understand</button>
+                <button type="button" className="btn btn-info fw-bold text-white px-4" onClick={navigateBack}>I Understand</button>
               </div>
             </div>
           </div>
@@ -1573,7 +1587,7 @@ function App() {
                 <h5 className="modal-title fw-bold text-warning mb-0">
                   <i className="bi bi-grid-3x3-gap-fill me-2"></i>Select Category
                 </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => closeModalCleanly(setShowCategoryMenu)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
               <div className={`modal-body p-3 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
                 <div className="d-flex flex-column gap-2">
@@ -1589,7 +1603,6 @@ function App() {
                         setSelectedCategory(cat);
                         setCurrentPage(1);
                         handleResetToAllCatalog();
-                        closeModalCleanly(setShowCategoryMenu);
                       }}
                     >
                       <span>📦 {cat}</span>
@@ -1608,9 +1621,9 @@ function App() {
         <div className="container py-4">
           <button 
             className={`btn fw-bold mb-4 rounded-pill px-4 shadow-sm ${darkMode ? 'btn-outline-light' : 'btn-outline-dark'}`}
-            onClick={handleResetToAllCatalog}
+            onClick={navigateBack}
           >
-            &larr; Back to All Products Catalog
+            &larr; Back
           </button>
 
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
@@ -1708,7 +1721,7 @@ function App() {
                     disabled={getProductStock(selectedProductDetail) <= 0}
                     onClick={() => {
                       addToCart(selectedProductDetail);
-                      openModalWithHistory(setShowCartModal);
+                      navigateToView('CART');
                     }}
                   >
                     <i className="bi bi-cart-plus-fill me-2"></i>
@@ -2121,8 +2134,8 @@ function App() {
               <h6 className="fw-bold text-white mb-2">Quick Navigation</h6>
               <ul className="list-unstyled small text-white-50 m-0 d-flex flex-column gap-1">
                 <li><a href="#home" className="text-white-50 text-decoration-none" onClick={handleResetToAllCatalog}>Home Catalog</a></li>
-                <li><span style={{ cursor: 'pointer' }} onClick={() => openModalWithHistory(setShowOrderTracking)}>Track My Orders</span></li>
-                <li><span style={{ cursor: 'pointer' }} onClick={() => openModalWithHistory(setShowCartModal)}>My Shopping Cart</span></li>
+                <li><span style={{ cursor: 'pointer' }} onClick={() => navigateToView('ORDER_TRACKING')}>Track My Orders</span></li>
+                <li><span style={{ cursor: 'pointer' }} onClick={() => navigateToView('CART')}>My Shopping Cart</span></li>
                 {!isRunningStandalone() && (
                   <li><span style={{ cursor: 'pointer' }} onClick={handleTriggerAppInstall} className="text-warning fw-bold">📲 Install Mobile App</span></li>
                 )}
@@ -2175,7 +2188,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-dark text-white">
                 <h5 className="modal-header-title fw-bold text-warning mb-0">Your Shopping Cart</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => closeModalCleanly(setShowCartModal)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
                 {cart.length === 0 ? (
@@ -2307,7 +2320,7 @@ function App() {
                       </div>
                       <button 
                         className="btn btn-success fw-bold px-4 py-2" 
-                        onClick={() => { setShowCartModal(false); openModalWithHistory(setShowCheckoutModal); }}
+                        onClick={() => navigateToView('CHECKOUT')}
                       >
                         Proceed to Checkout &rarr;
                       </button>
@@ -2327,7 +2340,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-success text-white">
                 <h5 className="modal-title fw-bold">📦 Secure Shipping & Payment Checkout</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => closeModalCleanly(setShowCheckoutModal)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
                 
@@ -2388,7 +2401,7 @@ function App() {
                       <span className="fs-5 fw-bold text-success">₹{finalCartTotal}</span>
                     </div>
                     <div className="d-flex gap-2">
-                      <button type="button" className="btn btn-outline-secondary btn-sm fw-bold" onClick={() => { setShowCheckoutModal(false); openModalWithHistory(setShowCartModal); }}>Back</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm fw-bold" onClick={navigateBack}>Back to Cart</button>
                       <button type="submit" className="btn btn-success btn-sm fw-bold px-3 py-2">Confirm & Place Order</button>
                     </div>
                   </div>
@@ -2409,7 +2422,7 @@ function App() {
                   <i className="bi bi-truck me-2"></i>My Placed Orders & Live Tracking
                   {user && <small className="d-block text-white-50 fs-6 fw-normal">Account: {user.email}</small>}
                 </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => closeModalCleanly(setShowOrderTracking)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
                 {userOrders.length === 0 ? (
@@ -2525,7 +2538,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-warning text-dark">
                 <h5 className="modal-title fw-bold">⭐ Rate & Review Delivered Product</h5>
-                <button type="button" className="btn-close" onClick={() => closeModalCleanly(setShowReviewModal)}></button>
+                <button type="button" className="btn-close" onClick={navigateBack}></button>
               </div>
               <div className="modal-body p-4">
                 <form onSubmit={handleSubmitReview}>
@@ -2542,7 +2555,7 @@ function App() {
                     <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="3" required placeholder="Share your experience..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}></textarea>
                   </div>
                   <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => closeModalCleanly(setShowReviewModal)}>Cancel</button>
+                    <button type="button" className="btn btn-outline-secondary" onClick={navigateBack}>Cancel</button>
                     <button type="submit" className="btn btn-warning fw-bold text-dark px-4">Submit Review</button>
                   </div>
                 </form>
@@ -2555,11 +2568,11 @@ function App() {
       {/* RETURN MODAL */}
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-dialog modal-dialog-centered">
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-danger text-white">
                 <h5 className="modal-title fw-bold">🔄 Request Order Return / Replacement</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => closeModalCleanly(setShowReviewModalReturn)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
               <div className="modal-body p-4">
                 <form onSubmit={handleSubmitReturnRequest}>
@@ -2583,7 +2596,7 @@ function App() {
                     <textarea className={`form-control ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} rows="3" required placeholder="Explain details..." value={returnComments} onChange={(e) => setReturnComments(e.target.value)}></textarea>
                   </div>
                   <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => closeModalCleanly(setShowReviewModalReturn)}>Cancel</button>
+                    <button type="button" className="btn btn-outline-secondary" onClick={navigateBack}>Cancel</button>
                     <button type="submit" className="btn btn-danger fw-bold px-4">Submit Request</button>
                   </div>
                 </form>
@@ -2600,7 +2613,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg p-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="modal-title fw-bold">📝 Customer Sign Up</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowSignupModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
               <form onSubmit={handleEmailSignupSubmit}>
                 <div className="mb-2">
@@ -2649,7 +2662,7 @@ function App() {
             <div className={`modal-content border-0 shadow-lg p-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="fw-bold mb-0 text-warning">🔓 Sign In to TechStore</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={() => closeModalCleanly(setShowLoginModal)}></button>
+                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
               </div>
               <form onSubmit={handleEmailLoginSubmit}>
                 <div className="mb-3">
