@@ -939,97 +939,100 @@ function App() {
   return (
     <div className={`${bgMainClass} min-vh-100 position-relative`} style={{ overflowX: 'hidden', width: '100%', backgroundColor: darkMode ? '#121212' : '#f8f9fa' }}>
       
-      {/* 🟢 TOP NAVBAR: BRAND AT LEFT CORNER, PROFILE & CART AT TOP RIGHT, MENU JUST BELOW PROFILE/CART */}
+      {/* 🟢 TOP COMPACT NAVBAR: TECHSTORE ON FAR LEFT, PROFILE & CART ON FAR RIGHT */}
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
-        <div className="container-fluid p-0 d-flex flex-column gap-2">
+        <div className="container-fluid p-0 d-flex justify-content-between align-items-center">
           
-          {/* ROW 1: BRAND LOGO PINNED TO FAR LEFT & PROFILE/CART AT FAR RIGHT */}
-          <div className="d-flex justify-content-between align-items-center w-100">
-            {/* BRAND LOGO PINNED TO FAR LEFT */}
-            <a 
-              className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0" 
-              href="#home"
-              onClick={handleResetToAllCatalog}
-            >
-              <i className="bi bi-shop me-1"></i>TechStore
-            </a>
+          {/* 1. BRAND LOGO PINNED TO FAR LEFT */}
+          <a 
+            className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0 p-0" 
+            href="#home"
+            onClick={handleResetToAllCatalog}
+          >
+            <i className="bi bi-shop me-1"></i>TechStore
+          </a>
 
-            {/* PROFILE & CART BUTTONS AT TOP RIGHT */}
-            <div className="d-flex align-items-center gap-2">
-              {user ? (
-                <button 
-                  className="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
-                  onClick={() => setShowProfileDrawer(true)}
-                  title="Open Profile Menu"
-                >
-                  <img 
-                    src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
-                    alt="Profile" 
-                    className="rounded-circle border border-warning" 
-                    width="24" 
-                    height="24" 
-                  />
-                  <span className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{user.name}</span>
-                  <i className="bi bi-chevron-down small text-warning ms-1"></i>
-                </button>
-              ) : (
-                <div className="d-flex align-items-center gap-1 gap-sm-2">
-                  <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
-                  <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
-                  <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '30px', width: '30px' }}>
-                    <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
-                  </div>
-                </div>
-              )}
-
-              {/* CART BUTTON */}
+          {/* 2. PROFILE & CART BUTTONS PINNED TO FAR RIGHT */}
+          <div className="d-flex align-items-center gap-2">
+            {user ? (
               <button 
-                className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm text-dark"
-                onClick={() => setShowCartModal(true)}
+                className="btn btn-outline-warning btn-sm rounded-pill px-2 px-sm-3 py-1 fw-bold d-inline-flex align-items-center gap-1 gap-sm-2 shadow-sm text-start bg-secondary bg-opacity-25 text-white border-warning"
+                onClick={() => setShowProfileDrawer(true)}
+                title="Open Profile Menu"
               >
-                <i className="bi bi-cart3 me-1"></i> Cart
-                {cartItemCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    {cartItemCount}
-                  </span>
-                )}
+                <img 
+                  src={user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
+                  alt="Profile" 
+                  className="rounded-circle border border-warning" 
+                  width="24" 
+                  height="24" 
+                />
+                <span className="fw-bold small text-truncate" style={{ maxWidth: '110px' }}>{user.name}</span>
+                <i className="bi bi-chevron-down small text-warning"></i>
               </button>
-            </div>
-          </div>
+            ) : (
+              <div className="d-flex align-items-center gap-1 gap-sm-2">
+                <button className="btn btn-outline-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1" onClick={() => setShowLoginModal(true)}>Sign In</button>
+                <button className="btn btn-warning btn-sm fw-bold rounded-pill px-2 px-sm-3 py-1 text-dark" onClick={() => setShowSignupModal(true)}>Sign Up</button>
+                <div className="d-inline-block rounded-circle overflow-hidden shadow-sm border bg-white" style={{ height: '28px', width: '28px' }}>
+                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} type="icon" shape="circle" size="medium" />
+                </div>
+              </div>
+            )}
 
-          {/* ROW 2: MENU BUTTON POSITIONED DIRECTLY BELOW PROFILE & CART (ALIGNED RIGHT) */}
-          <div className="d-flex justify-content-end align-items-center w-100">
+            {/* CART BUTTON */}
             <button 
-              className="btn btn-warning btn-sm fw-bold px-3 py-1 shadow-sm d-flex align-items-center justify-content-center gap-1 text-dark rounded-pill"
-              onClick={() => setShowCategoryMenu(true)}
-              title="Browse Categories"
+              className="btn btn-warning fw-bold rounded-pill px-3 py-1 btn-sm position-relative shadow-sm text-dark d-flex align-items-center gap-1"
+              onClick={() => setShowCartModal(true)}
             >
-              <i className="bi bi-list fs-6"></i>
-              <span className="small fw-bold">Menu / Categories</span>
+              <i className="bi bi-cart3"></i>
+              <span>Cart</span>
+              {cartItemCount > 0 && (
+                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {cartItemCount}
+                </span>
+              )}
             </button>
           </div>
 
         </div>
       </nav>
 
-      {/* 🟢 SEARCH BAR: MOVED DOWN ON WHITE/MAIN BACKGROUND, JUST ABOVE SLIDING BANNER */}
-      <div className="container mt-3 px-2 px-md-3">
-        <div className={`p-2 rounded-4 shadow-sm border ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-          <div className="input-group">
-            <span className={`input-group-text border-0 ${darkMode ? 'bg-dark text-warning' : 'bg-white text-muted'}`}>
-              <i className="bi bi-search fs-6"></i>
-            </span>
-            <input 
-              type="text" 
-              className={`form-control border-0 shadow-none px-2 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`} 
-              placeholder="Search products by title, category, or specifications..." 
-              value={searchTerm} 
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); handleResetToAllCatalog(); }} 
-            />
-            {searchTerm && (
-              <button className="btn btn-sm btn-link text-secondary text-decoration-none" onClick={() => setSearchTerm('')}>✕</button>
-            )}
+      {/* 🟢 SEARCH & MENU INTEGRATED BAR: PLACED BEAUTIFULLY JUST ABOVE SLIDING BANNER */}
+      <div className="container mt-2 mb-2 px-2 px-md-3">
+        <div className="d-flex align-items-center gap-2">
+          
+          {/* MENU / CATEGORIES BUTTON */}
+          <button 
+            className="btn btn-warning btn-sm fw-bold px-3 py-2 shadow-sm d-flex align-items-center justify-content-center gap-1 text-dark rounded-pill"
+            onClick={() => setShowCategoryMenu(true)}
+            title="Browse Categories"
+            style={{ whiteSpace: 'nowrap', height: '40px' }}
+          >
+            <i className="bi bi-list fs-5"></i>
+            <span className="small fw-bold">Menu</span>
+          </button>
+
+          {/* SEARCH INPUT BAR */}
+          <div className={`flex-grow-1 p-1 rounded-pill shadow-sm border ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`} style={{ height: '40px' }}>
+            <div className="input-group h-100 align-items-center">
+              <span className={`input-group-text border-0 bg-transparent py-0 ps-2 pe-1 ${darkMode ? 'text-warning' : 'text-muted'}`}>
+                <i className="bi bi-search" style={{ fontSize: '13px' }}></i>
+              </span>
+              <input 
+                type="text" 
+                className={`form-control border-0 shadow-none py-0 ps-1 pe-2 small ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`} 
+                placeholder="Search products..." 
+                value={searchTerm} 
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); handleResetToAllCatalog(); }} 
+                style={{ fontSize: '13px' }}
+              />
+              {searchTerm && (
+                <button className="btn btn-sm btn-link text-secondary text-decoration-none py-0 pe-2" onClick={() => setSearchTerm('')}>✕</button>
+              )}
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -1654,7 +1657,7 @@ function App() {
       ) : (
         <>
           {/* SLIDING BANNER CAROUSEL */}
-          <div className="container mt-3 mb-2 px-2 px-md-3">
+          <div className="container mt-2 mb-2 px-2 px-md-3">
             {bannersLoading ? (
               <div 
                 className={`rounded-4 p-4 text-center shadow-sm d-flex align-items-center justify-content-center ${darkMode ? 'bg-secondary bg-opacity-25' : 'bg-secondary bg-opacity-10'}`}
