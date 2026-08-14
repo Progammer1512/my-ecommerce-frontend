@@ -7,6 +7,9 @@ import { jwtDecode } from 'jwt-decode';
 // LIVE BACKEND BASE URL
 const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 
+// RELIABLE FALLBACK IMAGE
+const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
+
 // Helper to filter out corrupted local/broken image paths
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -778,7 +781,7 @@ function App() {
         qty: Number(i.qty) || 1, 
         price: Number(i.price) || 0, 
         product: i._id || i.id,
-        image: i.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'
+        image: i.image || DEFAULT_FALLBACK_IMAGE
       })),
       shippingAddress: { 
         name: shippingName || (user ? user.name : 'Verified Customer'), 
@@ -890,7 +893,7 @@ function App() {
         _id: item.product || item._id,
         name: item.name,
         price: item.price,
-        image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
+        image: item.image || DEFAULT_FALLBACK_IMAGE,
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
         countInStock: item.countInStock !== undefined ? item.countInStock : (item.stock || 0)
@@ -966,6 +969,7 @@ function App() {
                   className="rounded-circle border border-warning" 
                   width="24" 
                   height="24" 
+                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'; }}
                 />
                 <span className="fw-bold small text-truncate" style={{ maxWidth: '110px' }}>{user.name}</span>
                 <i className="bi bi-chevron-down small text-warning"></i>
@@ -1049,6 +1053,7 @@ function App() {
                   className="rounded-circle border border-warning shadow-sm" 
                   width="48" 
                   height="48" 
+                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'; }}
                 />
                 <div className="text-truncate">
                   <h6 className="fw-bold text-warning mb-0 text-truncate">{user.name}</h6>
@@ -1257,8 +1262,9 @@ function App() {
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                             <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
                               <img 
-                                src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} 
+                                src={item.image || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
+                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                               />
                             </div>
@@ -1482,9 +1488,10 @@ function App() {
                   {/* 🟢 PRODUCT DETAIL IMAGE WITH PERFECT PROPORTIONS & ROUNDED CORNERS */}
                   <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img 
-                      src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
+                      src={selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
                       alt={selectedProductDetail.name} 
                       className="shadow-sm" 
+                      onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                       style={{ 
                         width: '100%',
                         height: '100%',
@@ -1646,9 +1653,10 @@ function App() {
                     >
                       <div style={{ width: '90%', height: '135px', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img 
-                          src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
+                          src={p.image || DEFAULT_FALLBACK_IMAGE} 
                           className="shadow-sm" 
                           alt={p.name} 
+                          onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       </div>
@@ -1734,6 +1742,7 @@ function App() {
                         src={currentBanner.img} 
                         alt="Offer" 
                         className="img-fluid rounded-4 shadow-lg border border-white border-opacity-25" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                         style={{ maxHeight: '130px', objectFit: 'cover', width: '100%', borderRadius: '16px' }}
                       />
                     </div>
@@ -1801,7 +1810,7 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 FULLY CLIPPED ROUNDED IMAGE FRAME */}
+                          {/* 🟢 FULLY CLIPPED ROUNDED IMAGE FRAME WITH FALLBACK */}
                           <div 
                             className={`text-center p-2 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ height: '170px', cursor: 'pointer' }}
@@ -1820,8 +1829,9 @@ function App() {
                               }}
                             >
                               <img 
-                                src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
+                                src={p.image || DEFAULT_FALLBACK_IMAGE} 
                                 alt={p.name} 
+                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                                 style={{ 
                                   width: '100%', 
                                   height: '100%', 
@@ -2260,7 +2270,15 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="border bg-white" width="40" height="40" style={{ objectFit: 'cover', borderRadius: '10px' }} />
+                                  <img 
+                                    src={item.image || DEFAULT_FALLBACK_IMAGE} 
+                                    alt={item.name} 
+                                    className="border bg-white" 
+                                    width="40" 
+                                    height="40" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                                    style={{ objectFit: 'cover', borderRadius: '10px' }} 
+                                  />
                                   <div>
                                     <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
                                     <span className="badge bg-secondary" style={{ fontSize: '9px' }}>Qty: {item.qty || 1}</span>
