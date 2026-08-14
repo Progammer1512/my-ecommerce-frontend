@@ -181,7 +181,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🟢 SMART MODAL OPENER WITH BROWSER/MOBILE GESTURE BACK HISTORY PUSH
+  // 🟢 SMART MODAL OPENER WITH HISTORY
   const openModalWithHistory = (setterFn) => {
     setterFn(true);
     window.history.pushState({ modalOpen: true }, '', window.location.href);
@@ -234,7 +234,6 @@ function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  // 📲 FUNCTION: TRIGGER 1-CLICK NATIVE INSTALLATION
   const handleTriggerAppInstall = async () => {
     if (deferredInstallPrompt) {
       deferredInstallPrompt.prompt();
@@ -250,10 +249,9 @@ function App() {
     }
   };
 
-  // 🟢 BULLETPROOF MOBILE GESTURE BACK / SWIPE BACK EVENT HANDLER (NEVER CRASHES THE APP)
+  // 🟢 MOBILE GESTURE BACK / SWIPE BACK HANDLER
   useEffect(() => {
     const handlePopState = (event) => {
-      // 1. If any modal/popup is open, close only that modal and keep main store alive!
       if (showAppDownloadModal) { setShowAppDownloadModal(false); return; }
       if (showAccountSettingsModal) { setShowAccountSettingsModal(false); return; }
       if (showEditProfileModal) { setShowEditProfileModal(false); return; }
@@ -268,7 +266,6 @@ function App() {
       if (showReviewModal) { setShowReviewModal(false); return; }
       if (showReturnModal) { setShowReviewModalReturn(false); return; }
 
-      // 2. Linear Product Detail Navigation Stack
       if (event.state && typeof event.state.stackIdx === 'number') {
         const targetIdx = event.state.stackIdx;
         if (targetIdx >= 0 && targetIdx < navigationStack.length) {
@@ -279,7 +276,6 @@ function App() {
         }
       }
 
-      // 3. Fallback: reset to main product catalog
       setSelectedProductDetail(null);
       setCurrentIndex(-1);
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
@@ -758,7 +754,11 @@ function App() {
     if (existing) {
       updatedCart = cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item);
     } else {
-      updatedCart = [...cart, { ...product, qty: 1 }];
+      updatedCart = [...cart, { 
+        ...product, 
+        qty: 1, 
+        image: product.image || DEFAULT_FALLBACK_IMAGE 
+      }];
     }
     setCart(updatedCart);
     syncUserUserDataToDatabase(updatedCart, undefined);
@@ -781,6 +781,25 @@ function App() {
     const updatedCart = cart.filter(item => item._id !== id);
     setCart(updatedCart);
     syncUserUserDataToDatabase(updatedCart, undefined);
+  };
+
+  // 🟢 SMART HELPER: OPEN FULL PRODUCT DETAILS DIRECTLY FROM CART ITEM
+  const handleViewProductFromCart = (cartItem) => {
+    setShowCartModal(false);
+    const matched = products.find(p => p._id === cartItem._id || p.name === cartItem.name);
+    if (matched) {
+      handleOpenProductDetail(matched);
+    } else {
+      handleOpenProductDetail({
+        _id: cartItem._id,
+        name: cartItem.name,
+        price: cartItem.price,
+        image: cartItem.image || DEFAULT_FALLBACK_IMAGE,
+        description: cartItem.description || 'Premium store product added to your shopping cart.',
+        category: cartItem.category || 'Store Item',
+        countInStock: cartItem.countInStock !== undefined ? cartItem.countInStock : (cartItem.stock || 10)
+      });
+    }
   };
 
   const rawCartTotal = cart.reduce((acc, curr) => acc + (curr.price * curr.qty), 0);
@@ -2149,7 +2168,7 @@ function App() {
         )}
       </div>
 
-      {/* CART MODAL */}
+      {/* 🟢 🛒 ENHANCED CART MODAL (WITH PRODUCT IMAGES & 1-CLICK VIEW DETAILS) */}
       {showCartModal && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -2167,7 +2186,7 @@ function App() {
                       <table className={`table table-hover align-middle ${darkMode ? 'table-dark' : ''}`}>
                         <thead>
                           <tr>
-                            <th>Product</th>
+                            <th style={{ minWidth: '180px' }}>Product Item</th>
                             <th>Price</th>
                             <th className="text-center">Qty</th>
                             <th>Subtotal</th>
@@ -2177,8 +2196,35 @@ function App() {
                         <tbody>
                           {cart.map((item) => (
                             <tr key={item._id}>
-                              <td className="fw-bold small">{item.name}</td>
-                              <td className="small">₹{item.price}</td>
+                              {/* 🟢 PRODUCT IMAGE THUMBNAIL + NAME (CLICKABLE TO OPEN PRODUCT DETAILS) */}
+                              <td>
+                                <div 
+                                  className="d-flex align-items-center gap-2" 
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => handleViewProductFromCart(item)}
+                                  title="Click to view product details"
+                                >
+                                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
+                                    <img 
+                                      src={item.image || DEFAULT_FALLBACK_IMAGE} 
+                                      alt={item.name} 
+                                      className="shadow-sm" 
+                                      onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    />
+                                  </div>
+                                  <div>
+                                    <span className="fw-bold small text-truncate d-block" style={{ maxWidth: '140px' }}>
+                                      {item.name}
+                                    </span>
+                                    <span className="text-primary fw-bold d-block" style={{ fontSize: '10px' }}>
+                                      🔍 View Details &rarr;
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="small fw-semibold">₹{item.price}</td>
                               <td className="text-center">
                                 <div className={`d-inline-flex align-items-center border rounded px-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                                   <button 
