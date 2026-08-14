@@ -181,7 +181,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS (NEVER IN INSTALLED APP & NEVER ON DESKTOP)
+  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
   useEffect(() => {
     if (isRunningStandalone() || !isMobileDevice()) {
       setShowAppDownloadModal(false);
@@ -698,12 +698,19 @@ function App() {
     return ord.userEmail && ord.userEmail.toLowerCase() === user.email.toLowerCase();
   });
 
-  const filteredProducts = products.filter(p => {
-    const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  // 🟢 PRIORITY RANK SORTING: 1, 2, 3... (Rank 1 appears on top)
+  const filteredProducts = products
+    .filter(p => {
+      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    })
+    .sort((a, b) => {
+      const rankA = a.priority !== undefined && a.priority !== null && a.priority !== '' ? Number(a.priority) : 100;
+      const rankB = b.priority !== undefined && b.priority !== null && b.priority !== '' ? Number(b.priority) : 100;
+      return rankA - rankB;
+    });
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
@@ -1105,7 +1112,7 @@ function App() {
         </div>
       </div>
 
-      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (ONLY ON MOBILE BROWSER, NEVER IN APP & NEVER ON DESKTOP) */}
+      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL */}
       {showAppDownloadModal && !isAppInstalled && isMobileDevice() && !isRunningStandalone() && (
         <div className="modal show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1080 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
