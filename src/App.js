@@ -1255,8 +1255,15 @@ function App() {
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                            {/* 🟢 ROUNDED CORNER FOR WISHLIST IMAGES */}
-                            <img src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} alt={item.name} className="rounded-3" width="48" height="48" style={{ objectFit: 'contain' }} />
+                            {/* 🟢 ROUNDED IMAGE IN WISHLIST */}
+                            <img 
+                              src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'} 
+                              alt={item.name} 
+                              className="rounded-3 shadow-sm" 
+                              width="48" 
+                              height="48" 
+                              style={{ objectFit: 'contain', borderRadius: '12px' }} 
+                            />
                             <div className="flex-grow-1 text-truncate">
                               <span className="fw-bold small text-truncate d-block">{item.name}</span>
                               <span className="text-success fw-bold small">₹{item.price}</span>
@@ -1470,11 +1477,12 @@ function App() {
                   <span className="position-absolute top-0 start-0 badge bg-danger m-3 px-3 py-2 fw-bold fs-6 shadow">
                     10% OFF
                   </span>
+                  {/* 🟢 PRODUCT DETAIL IMAGE WITH DIRECT ROUNDED CORNERS */}
                   <img 
                     src={selectedProductDetail.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'} 
                     alt={selectedProductDetail.name} 
-                    className="img-fluid rounded-3" 
-                    style={{ maxHeight: '380px', objectFit: 'contain' }}
+                    className="img-fluid shadow-sm" 
+                    style={{ maxHeight: '380px', objectFit: 'contain', borderRadius: '16px' }}
                   />
                 </div>
               </div>
@@ -1627,12 +1635,12 @@ function App() {
                       style={{ height: '160px', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
-                      {/* 🟢 ROUNDED CORNER FOR SIMILAR PRODUCTS */}
+                      {/* 🟢 ROUNDED CORNERS DIRECTLY ON SIMILAR PRODUCT IMAGE */}
                       <img 
                         src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                        className="img-fluid h-100 rounded-3" 
+                        className="img-fluid h-100 shadow-sm" 
                         alt={p.name} 
-                        style={{ objectFit: 'contain' }}
+                        style={{ objectFit: 'contain', borderRadius: '14px' }}
                       />
                     </div>
                     <div className={`card-body p-2 p-md-3 d-flex flex-column border-top ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
@@ -1715,8 +1723,8 @@ function App() {
                       <img 
                         src={currentBanner.img} 
                         alt="Offer" 
-                        className="img-fluid rounded-3 shadow-lg border border-white border-opacity-25" 
-                        style={{ maxHeight: '130px', objectFit: 'cover', width: '100%' }}
+                        className="img-fluid rounded-4 shadow-lg border border-white border-opacity-25" 
+                        style={{ maxHeight: '130px', objectFit: 'cover', width: '100%', borderRadius: '16px' }}
                       />
                     </div>
                   )}
@@ -1783,7 +1791,7 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 ROUNDED CONTAINER & IMAGE FOR CATALOG CARDS */}
+                          {/* 🟢 IMAGE CONTAINER WITH DIRECT ROUNDED IMAGE */}
                           <div 
                             className={`text-center p-2 p-md-3 ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ height: '150px', cursor: 'pointer' }}
@@ -1791,9 +1799,9 @@ function App() {
                           >
                             <img 
                               src={p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'} 
-                              className="img-fluid h-100 rounded-3" 
+                              className="img-fluid h-100 shadow-sm" 
                               alt={p.name} 
-                              style={{ objectFit: 'contain' }}
+                              style={{ objectFit: 'contain', borderRadius: '14px' }}
                             />
                           </div>
                           
@@ -2226,7 +2234,7 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="rounded-3 border bg-white" width="40" height="40" style={{ objectFit: 'cover' }} />
+                                  <img src={item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80'} alt={item.name} className="border bg-white" width="40" height="40" style={{ objectFit: 'cover', borderRadius: '10px' }} />
                                   <div>
                                     <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
                                     <span className="badge bg-secondary" style={{ fontSize: '9px' }}>Qty: {item.qty || 1}</span>
