@@ -10,6 +10,11 @@ const BASE_URL = 'https://my-ecommerce-admin.onrender.com';
 // RELIABLE FALLBACK IMAGE
 const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
 
+// HELPER: DETECT IF USER IS ON MOBILE DEVICE
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+};
+
 // Helper to filter out corrupted local/broken image paths
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -164,16 +169,25 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
+  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON MOBILE BROWSERS (NEVER ON DESKTOP)
+  useEffect(() => {
+    if (!isMobileDevice()) return; // 🛑 DESKTOP BYPASS
+
+    const hasSeen = sessionStorage.getItem('hasSeenAppPopup');
+    if (!hasSeen) {
+      const timer = setTimeout(() => {
+        setShowAppDownloadModal(true);
+        sessionStorage.setItem('hasSeenAppPopup', 'true');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // 📲 NATIVE APP INSTALL EVENT LISTENER
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredInstallPrompt(e);
-      const hasSeen = sessionStorage.getItem('hasSeenAppPopup');
-      if (!hasSeen) {
-        setShowAppDownloadModal(true);
-        sessionStorage.setItem('hasSeenAppPopup', 'true');
-      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -198,7 +212,7 @@ function App() {
         setDeferredInstallPrompt(null);
       }
     } else {
-      alert("📱 To install on Android/Chrome:\n1. Tap the 3 dots (⋮) in your browser\n2. Click 'Install App' or 'Add to Home Screen'!");
+      alert("📱 To install TechStore App:\n1. Tap your browser's 3 dots menu (⋮)\n2. Click 'Install App' or 'Add to Home Screen'!");
       setShowAppDownloadModal(false);
     }
   };
@@ -1072,8 +1086,8 @@ function App() {
         </div>
       </div>
 
-      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (WITH DIRECT 1-CLICK PWA INSTALLATION) */}
-      {showAppDownloadModal && !isAppInstalled && (
+      {/* 🟢 📲 SMART NATIVE APP DOWNLOAD PROMPT MODAL (ONLY ON MOBILE) */}
+      {showAppDownloadModal && !isAppInstalled && isMobileDevice() && (
         <div className="modal show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1080 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center p-3 p-md-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
@@ -2006,7 +2020,7 @@ function App() {
         </>
       )}
 
-      {/* 🟢 FOOTER WITH VISIBLE & BEAUTIFULLY STYLED APP DOWNLOAD SECTION */}
+      {/* FOOTER */}
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
           
@@ -2449,7 +2463,7 @@ function App() {
       {/* RETURN MODAL */}
       {showReturnModal && selectedOrderForReturn && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className={`modal-content border-0 shadow-lg ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-danger text-white">
                 <h5 className="modal-title fw-bold">🔄 Request Order Return / Replacement</h5>
