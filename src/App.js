@@ -22,7 +22,7 @@ const isRunningStandalone = () => {
 // 🟢 HELPER 2: DETECT IF USER IS ON MOBILE BROWSER (NOT DESKTOP)
 const isMobileDevice = () => {
   return (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
     window.innerWidth <= 768
   );
 };
@@ -138,8 +138,9 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // FULL-PAGE PRODUCT DETAIL STATE
+  // 🟢 FULL-PAGE PRODUCT DETAIL & ACTIVE DISPLAY IMAGE (GALLERY)
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
+  const [activeGalleryImage, setActiveGalleryImage] = useState('');
 
   const [allReviews, setAllReviews] = useState([]);
 
@@ -214,6 +215,11 @@ function App() {
     switch (state.view) {
       case 'PRODUCT_DETAIL':
         setSelectedProductDetail(state.product);
+        setActiveGalleryImage(
+          (state.product?.images && state.product.images.length > 0)
+            ? state.product.images[0]
+            : (state.product?.image || DEFAULT_FALLBACK_IMAGE)
+        );
         window.scrollTo({ top: 0, behavior: 'instant' });
         break;
       case 'CART':
@@ -788,7 +794,7 @@ function App() {
       updatedCart = [...cart, { 
         ...product, 
         qty: 1, 
-        image: product.image || DEFAULT_FALLBACK_IMAGE 
+        image: product.image || (product.images && product.images[0]) || DEFAULT_FALLBACK_IMAGE 
       }];
     }
     setCart(updatedCart);
@@ -825,6 +831,7 @@ function App() {
         name: cartItem.name,
         price: cartItem.price,
         image: cartItem.image || DEFAULT_FALLBACK_IMAGE,
+        images: cartItem.images || [cartItem.image || DEFAULT_FALLBACK_IMAGE],
         description: cartItem.description || 'Premium store product added to your shopping cart.',
         category: cartItem.category || 'Store Item',
         countInStock: cartItem.countInStock !== undefined ? cartItem.countInStock : (cartItem.stock || 10)
@@ -1027,6 +1034,7 @@ function App() {
         name: item.name,
         price: item.price,
         image: item.image || DEFAULT_FALLBACK_IMAGE,
+        images: [item.image || DEFAULT_FALLBACK_IMAGE],
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
         countInStock: item.countInStock !== undefined ? item.countInStock : (item.stock || 0)
@@ -1066,6 +1074,13 @@ function App() {
   };
 
   const currentBanner = heroBanners[currentSlide] || null;
+
+  // 📸 EXTRACT MULTIPLE GALLERY IMAGES FOR DETAIL VIEW
+  const detailGalleryImages = selectedProductDetail
+    ? (Array.isArray(selectedProductDetail.images) && selectedProductDetail.images.length > 0)
+      ? selectedProductDetail.images
+      : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE])
+    : [];
 
   // 🌓 DYNAMIC THEME CLASS HELPERS
   const bgMainClass = darkMode ? 'bg-dark text-white' : 'bg-light text-dark';
@@ -1435,7 +1450,7 @@ function App() {
                               title="Click to view details"
                             >
                               <img 
-                                src={item.image || DEFAULT_FALLBACK_IMAGE} 
+                                src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
@@ -1625,7 +1640,7 @@ function App() {
         </div>
       )}
 
-      {/* PRODUCT DETAIL OR MAIN CATALOG */}
+      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE MULTI-ANGLE GALLERY) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1636,10 +1651,12 @@ function App() {
           </button>
 
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
-            <div className="row g-4 align-items-center">
+            <div className="row g-4 align-items-start">
+              
+              {/* 📸 LEFT COLUMN: MAIN LARGE IMAGE + CLICKABLE THUMBNAIL GALLERY */}
               <div className="col-lg-5 text-center">
                 <div 
-                  className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
+                  className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
                   style={{ minHeight: '320px' }}
                 >
                   <button 
@@ -1655,9 +1672,10 @@ function App() {
                     10% OFF
                   </span>
                   
-                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center' }}>
+                  {/* Large Active Display Image */}
+                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img 
-                      src={selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
+                      src={activeGalleryImage || selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
                       alt={selectedProductDetail.name} 
                       className="shadow-sm" 
                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -1665,13 +1683,40 @@ function App() {
                         width: '100%', 
                         height: '100%', 
                         objectFit: 'cover', 
-                        borderRadius: '18px' 
+                        borderRadius: '18px',
+                        transition: '0.3s ease-in-out'
                       }}
                     />
                   </div>
                 </div>
+
+                {/* 📸 Multi-angle Clickable Thumbnail Strip */}
+                {detailGalleryImages.length > 1 && (
+                  <div className="d-flex align-items-center justify-content-center gap-2 overflow-auto py-1" style={{ scrollbarWidth: 'none' }}>
+                    {detailGalleryImages.map((imgUrl, idx) => {
+                      const isSelected = (activeGalleryImage === imgUrl) || (!activeGalleryImage && idx === 0);
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => setActiveGalleryImage(imgUrl)}
+                          className={`rounded-3 p-1 border shadow-sm ${isSelected ? 'border-warning border-3' : 'border-secondary opacity-75'}`}
+                          style={{ width: '60px', height: '60px', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
+                          title={`View Angle #${idx + 1}`}
+                        >
+                          <img 
+                            src={imgUrl || DEFAULT_FALLBACK_IMAGE} 
+                            alt={`Thumbnail ${idx + 1}`} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
+              {/* RIGHT COLUMN: PRODUCT INFO & PURCHASE */}
               <div className="col-lg-7 d-flex flex-column">
                 <span className="badge bg-primary text-uppercase px-3 py-2 fw-bold w-auto me-auto mb-2">
                   {selectedProductDetail.category || 'General'}
@@ -1822,7 +1867,7 @@ function App() {
                     >
                       <div style={{ width: '90%', height: '135px', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img 
-                          src={p.image || DEFAULT_FALLBACK_IMAGE} 
+                          src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                           className="shadow-sm" 
                           alt={p.name} 
                           onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -1998,7 +2043,7 @@ function App() {
                               }}
                             >
                               <img 
-                                src={p.image || DEFAULT_FALLBACK_IMAGE} 
+                                src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                 alt={p.name} 
                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                                 style={{ 
@@ -2231,7 +2276,7 @@ function App() {
                                 >
                                   <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
                                     <img 
-                                      src={item.image || DEFAULT_FALLBACK_IMAGE} 
+                                      src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                       alt={item.name} 
                                       className="shadow-sm" 
                                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
