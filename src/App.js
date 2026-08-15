@@ -53,6 +53,10 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 16;
 
+  // 🌳 NESTED CATEGORY TREE STATE
+  const [categoryTree, setCategoryTree] = useState([]);
+  const [allCategoriesList, setAllCategoriesList] = useState([]);
+
   // 📲 NATIVE PWA APP INSTALL PROMPT STATES
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
@@ -141,10 +145,11 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // 🟢 FULL-PAGE PRODUCT DETAIL, ACTIVE DISPLAY IMAGE & SELECTED VARIANT STATE
+  // 🟢 FULL-PAGE PRODUCT DETAIL, GALLERY & DYNAMIC ATTRIBUTE SELECTOR STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [activeGalleryImage, setActiveGalleryImage] = useState('');
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedAttributes, setSelectedAttributes] = useState({});
+  const [matchedVariant, setMatchedVariant] = useState(null);
 
   const [allReviews, setAllReviews] = useState([]);
 
@@ -201,7 +206,8 @@ function App() {
     setShowReviewModal(false);
     setShowReviewModalReturn(false);
     setSelectedProductDetail(null);
-    setSelectedVariant(null);
+    setSelectedAttributes({});
+    setMatchedVariant(null);
 
     if (state && typeof state.page === 'number') {
       setCurrentPage(state.page);
@@ -219,17 +225,34 @@ function App() {
 
     switch (state.view) {
       case 'PRODUCT_DETAIL':
-        setSelectedProductDetail(state.product);
+        const prod = state.product;
+        setSelectedProductDetail(prod);
         setActiveGalleryImage(
-          (state.product?.images && state.product.images.length > 0)
-            ? state.product.images[0]
-            : (state.product?.image || DEFAULT_FALLBACK_IMAGE)
+          (prod?.images && prod.images.length > 0)
+            ? prod.images[0]
+            : (prod?.image || DEFAULT_FALLBACK_IMAGE)
         );
-        if (state.product?.variants && state.product.variants.length > 0) {
-          setSelectedVariant(state.product.variants[0]);
+
+        // Initialize default selected dynamic attributes
+        if (prod?.variants && prod.variants.length > 0) {
+          const firstVariant = prod.variants[0];
+          const initialAttrs = {};
+          if (firstVariant.attributes) {
+            const rawAttrs = (firstVariant.attributes instanceof Map) 
+              ? Object.fromEntries(firstVariant.attributes) 
+              : firstVariant.attributes;
+            Object.assign(initialAttrs, rawAttrs);
+          }
+          if (firstVariant.size) initialAttrs['Size'] = firstVariant.size;
+          if (firstVariant.color) initialAttrs['Color'] = firstVariant.color;
+          
+          setSelectedAttributes(initialAttrs);
+          setMatchedVariant(firstVariant);
         } else {
-          setSelectedVariant(null);
+          setSelectedAttributes({});
+          setMatchedVariant(null);
         }
+
         window.scrollTo({ top: 0, behavior: 'instant' });
         break;
       case 'CART':
@@ -380,6 +403,18 @@ function App() {
     }
   };
 
+  const fetchCategoriesTree = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/categories`, { timeout: 10000 });
+      if (res.data && res.data.tree) {
+        setCategoryTree(res.data.tree);
+        setAllCategoriesList(res.data.categories || []);
+      }
+    } catch (err) {
+      console.warn('Category tree fetch notice:', err.message);
+    }
+  };
+
   const fetchCoupons = async () => {
     try {
       const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
@@ -446,6 +481,7 @@ function App() {
 
   useEffect(() => {
     fetchProducts(true);
+    fetchCategoriesTree();
     fetchBanners(true);
     fetchLiveOrders();
     fetchReviews();
@@ -771,10 +807,12 @@ function App() {
     return ord.userEmail && ord.userEmail.toLowerCase() === user.email.toLowerCase();
   });
 
-  // 🟢 PRIORITY RANK SORTING: 1, 2, 3... (Rank 1 appears on top)
+  // 🟢 PRIORITY RANK SORTING & NESTED CATEGORY FILTERING
   const filteredProducts = products
     .filter(p => {
-      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'All' || 
+                              p.category === selectedCategory ||
+                              (Array.isArray(p.categoryPath) && p.categoryPath.includes(selectedCategory));
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
       return matchesCategory && matchesSearch;
@@ -790,24 +828,66 @@ function App() {
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
-  // 🟢 ADD TO CART (WITH DYNAMIC VARIANT SUPPORT)
+  // 🟢 DYNAMIC ATTRIBUTE SELECTOR HELPER (Extract distinct options per attribute name)
+  const getDistinctValuesForAttribute = (attrName) => {
+    if (!selectedProductDetail?.variants) return [];
+    const valuesSet = new Set();
+
+    selectedProductDetail.variants.forEach(v => {
+      if (v.attributes) {
+        const rawMap = (v.attributes instanceof Map) ? Object.fromEntries(v.attributes) : v.attributes;
+        if (rawMap[attrName]) valuesSet.add(rawMap[attrName]);
+      }
+      if (attrName.toLowerCase() === 'size' && v.size) valuesSet.add(v.size);
+      if (attrName.toLowerCase() === 'color' && v.color) valuesSet.add(v.color);
+    });
+
+    return Array.from(valuesSet);
+  };
+
+  // 🟢 UPDATE SELECTED DYNAMIC ATTRIBUTE & RE-MATCH VARIANT
+  const handleSelectAttributeValue = (attrName, value) => {
+    const updatedAttrs = { ...selectedAttributes, [attrName]: value };
+    setSelectedAttributes(updatedAttrs);
+
+    if (selectedProductDetail?.variants) {
+      const found = selectedProductDetail.variants.find(v => {
+        const rawMap = (v.attributes instanceof Map) ? Object.fromEntries(v.attributes) : (v.attributes || {});
+        
+        return Object.entries(updatedAttrs).every(([k, expectedVal]) => {
+          if (rawMap[k] && rawMap[k] === expectedVal) return true;
+          if (k.toLowerCase() === 'size' && v.size === expectedVal) return true;
+          if (k.toLowerCase() === 'color' && v.color === expectedVal) return true;
+          return false;
+        });
+      });
+
+      if (found) setMatchedVariant(found);
+    }
+  };
+
+  // 🟢 ADD TO CART (DYNAMIC VARIANT SUPPORT)
   const addToCart = (product, specificVariant = null) => {
-    const variantToUse = specificVariant || selectedVariant;
+    const variantToUse = specificVariant || matchedVariant;
     const currentPrice = variantToUse ? Number(variantToUse.price) : Number(product.price);
     const prodStock = getProductStock(product, variantToUse);
 
     if (prodStock <= 0) {
-      alert("❌ Sorry, this item/size option is Out of Stock!");
+      alert("❌ Sorry, this item/option is Out of Stock!");
       return;
     }
 
-    const variantKey = variantToUse 
-      ? `${product._id || product.id}_${variantToUse.size || 'STD'}_${variantToUse.color || 'STD'}`
-      : `${product._id || product.id}_BASE`;
+    const attrValuesLabel = variantToUse?.attributes
+      ? Object.entries(
+          (variantToUse.attributes instanceof Map) 
+            ? Object.fromEntries(variantToUse.attributes) 
+            : variantToUse.attributes
+        ).map(([k, v]) => `${k}: ${v}`).join(', ')
+      : (variantToUse?.size ? `Size: ${variantToUse.size}` : '');
 
-    const variantLabel = variantToUse 
-      ? `${variantToUse.color ? variantToUse.color + ' ' : ''}${variantToUse.size ? '(' + variantToUse.size + ')' : ''}`.trim()
-      : '';
+    const variantKey = variantToUse 
+      ? `${product._id || product.id}_${attrValuesLabel.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : `${product._id || product.id}_BASE`;
 
     let updatedCart;
     const existing = cart.find(item => item.cartItemKey === variantKey);
@@ -820,7 +900,7 @@ function App() {
       updatedCart = [...cart, { 
         ...product,
         cartItemKey: variantKey,
-        selectedOption: variantLabel,
+        selectedOption: attrValuesLabel,
         price: currentPrice,
         qty: 1, 
         image: activeGalleryImage || product.image || (product.images && product.images[0]) || DEFAULT_FALLBACK_IMAGE 
@@ -851,7 +931,6 @@ function App() {
     syncUserUserDataToDatabase(updatedCart, undefined);
   };
 
-  // 🟢 SMART HELPER: OPEN FULL PRODUCT DETAILS DIRECTLY FROM CART ITEM
   const handleViewProductFromCart = (cartItem) => {
     const matched = products.find(p => p._id === cartItem._id || p.name === cartItem.name);
     if (matched) {
@@ -942,8 +1021,6 @@ function App() {
     e.preventDefault();
     handleApplyCouponCode(couponCode);
   };
-
-  const categoriesList = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -1106,12 +1183,38 @@ function App() {
 
   const currentBanner = heroBanners[currentSlide] || null;
 
-  // 📸 EXTRACT MULTIPLE GALLERY IMAGES FOR DETAIL VIEW
   const detailGalleryImages = selectedProductDetail
     ? (Array.isArray(selectedProductDetail.images) && selectedProductDetail.images.length > 0)
       ? selectedProductDetail.images
       : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE])
     : [];
+
+  // Recursive Category Drawer Tree Renderer
+  const renderCategoryMenuTree = (nodes, depth = 0) => {
+    return nodes.map((catNode) => {
+      const isSelected = selectedCategory === catNode.name;
+      return (
+        <div key={catNode._id} style={{ marginLeft: `${depth * 15}px` }} className="my-1">
+          <button
+            type="button"
+            className={`btn text-start fw-bold py-2 px-3 rounded-3 w-100 d-flex align-items-center justify-content-between shadow-sm ${
+              isSelected 
+                ? 'btn-warning text-dark' 
+                : darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'
+            }`}
+            onClick={() => {
+              setSelectedCategory(catNode.name);
+              navigateToView('HOME', { page: 1, category: catNode.name });
+            }}
+          >
+            <span>{depth > 0 ? '↳ ' : '📁 '} {catNode.name}</span>
+            {isSelected && <i className="bi bi-check-circle-fill text-dark"></i>}
+          </button>
+          {catNode.children && catNode.children.length > 0 && renderCategoryMenuTree(catNode.children, depth + 1)}
+        </div>
+      );
+    });
+  };
 
   // 🌓 DYNAMIC THEME CLASS HELPERS
   const bgMainClass = darkMode ? 'bg-dark text-white' : 'bg-light text-dark';
@@ -1125,7 +1228,7 @@ function App() {
       <nav className="navbar navbar-dark bg-dark sticky-top shadow-sm py-2 px-2 px-md-3">
         <div className="container-fluid p-0 d-flex justify-content-between align-items-center">
           
-          {/* 1. BRAND LOGO PINNED TO FAR LEFT */}
+          {/* 1. BRAND LOGO */}
           <a 
             className="navbar-brand fw-bold text-warning fs-4 fs-md-3 m-0 p-0" 
             href="#home"
@@ -1134,7 +1237,7 @@ function App() {
             <i className="bi bi-shop me-1"></i>TechStore
           </a>
 
-          {/* 2. PROFILE & CART BUTTONS PINNED TO FAR RIGHT */}
+          {/* 2. PROFILE & CART BUTTONS */}
           <div className="d-flex align-items-center gap-2">
             {user ? (
               <button 
@@ -1181,19 +1284,19 @@ function App() {
         </div>
       </nav>
 
-      {/* 🟢 SEARCH & MENU INTEGRATED BAR */}
+      {/* 🟢 SEARCH & NESTED MENU INTEGRATED BAR */}
       <div className="container mt-2 mb-2 px-2 px-md-3">
         <div className="d-flex align-items-center gap-2">
           
-          {/* MENU / CATEGORIES BUTTON */}
+          {/* MENU / NESTED CATEGORIES BUTTON */}
           <button 
             className="btn btn-warning btn-sm fw-bold px-3 py-2 shadow-sm d-flex align-items-center justify-content-center gap-1 text-dark rounded-pill"
             onClick={() => navigateToView('CATEGORY_MENU')}
-            title="Browse Categories"
+            title="Browse Categories & Sub-Categories"
             style={{ whiteSpace: 'nowrap', height: '40px' }}
           >
             <i className="bi bi-list fs-5"></i>
-            <span className="small fw-bold">Menu</span>
+            <span className="small fw-bold">Categories</span>
           </button>
 
           {/* SEARCH INPUT BAR */}
@@ -1421,15 +1524,12 @@ function App() {
               </div>
 
               <div className="overflow-auto pe-1" style={{ maxHeight: '70vh' }}>
-                
-                {/* 1. ACCOUNT OVERVIEW */}
                 <div className={`p-3 rounded border mb-3 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                   <h6 className="fw-bold mb-1 d-flex align-items-center"><i className="bi bi-person-check-fill text-success me-2"></i>Account Overview</h6>
                   <small className={`${subTextClass} d-block`}>User: {user.name} ({user.email})</small>
                   <small className="text-success fw-bold d-block mt-1">Status: Verified Store Customer</small>
                 </div>
 
-                {/* 2. THEME CUSTOMIZATION */}
                 <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
@@ -1461,7 +1561,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 3. MY SAVED WISHLIST ITEMS */}
                 <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
                   <h6 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
                     <span><i className="bi bi-heart-fill text-danger me-2"></i>My Saved Wishlist</span>
@@ -1469,7 +1568,7 @@ function App() {
                   </h6>
 
                   {wishlist.length === 0 ? (
-                    <small className={`${subTextClass} d-block py-2`}>No products saved to wishlist yet. Click the heart ❤️ icon on products to save them here!</small>
+                    <small className={`${subTextClass} d-block py-2`}>No products saved to wishlist yet.</small>
                   ) : (
                     <div className="row g-2 mt-1">
                       {wishlist.map((item) => (
@@ -1502,90 +1601,9 @@ function App() {
                   )}
                 </div>
 
-                {/* 4. AVAILABLE STORE COUPONS */}
-                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
-                  <h6 className="fw-bold mb-2 d-flex align-items-center"><i className="bi bi-tag-fill text-warning me-2"></i>Available Live Promo Coupons</h6>
-                  {coupons.length === 0 ? (
-                    <small className={`${subTextClass} d-block py-1`}>No coupons active right now.</small>
-                  ) : (
-                    <div className="d-flex flex-wrap gap-2 mt-2">
-                      {coupons.map((c, idx) => {
-                        const maxU = Number(c.maxUsage) || 100;
-                        const usedU = Number(c.usedCount) || 0;
-                        const remaining = Math.max(0, maxU - usedU);
-
-                        return (
-                          <div key={c.id || idx} className={`p-2 rounded border border-primary border-opacity-25 d-flex align-items-center gap-2 shadow-sm ${darkMode ? 'bg-dark' : 'bg-white'}`}>
-                            <span className="badge bg-primary fw-bold">🏷️ {c.code}</span>
-                            <small className="fw-bold">{c.discount}% OFF on [{c.category || 'All'}]</small>
-                            {c.targetUserEmail && <span className="badge bg-warning text-dark small">🎁 Special For You</span>}
-                            <small className={subTextClass}>({remaining} left)</small>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* 5. MULTIPLE SAVED SHIPPING ADDRESSES */}
-                <div className={`p-3 rounded border mb-4 shadow-sm ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`}>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h6 className="fw-bold m-0 d-flex align-items-center"><i className="bi bi-geo-alt-fill text-info me-2"></i>Saved Shipping Addresses</h6>
-                    <button className="btn btn-sm btn-outline-primary fw-bold py-0 px-2" style={{ fontSize: '12px' }} onClick={() => setShowAddAddressForm(!showAddAddressForm)}>
-                      {showAddAddressForm ? 'Cancel' : '+ Add New Address'}
-                    </button>
-                  </div>
-
-                  {showAddAddressForm && (
-                    <form onSubmit={handleAddNewAddress} className={`p-3 rounded border mb-3 shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                      <h6 className="fw-bold text-primary mb-2 small">Add Shipping Location Details:</h6>
-                      <div className="row g-2 mb-2">
-                        <div className="col-4">
-                          <select className="form-select form-select-sm fw-bold" value={newAddressForm.title} onChange={(e) => setNewAddressForm({...newAddressForm, title: e.target.value})}>
-                            <option value="Home">Home</option>
-                            <option value="Office">Office</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                        <div className="col-8">
-                          <input type="text" className="form-control form-control-sm" placeholder="Full Name" required value={newAddressForm.name} onChange={(e) => setNewAddressForm({...newAddressForm, name: e.target.value})} />
-                        </div>
-                        <div className="col-6">
-                          <input type="tel" className="form-control form-control-sm" placeholder="Phone Number" required value={newAddressForm.phone} onChange={(e) => setNewAddressForm({...newAddressForm, phone: e.target.value})} />
-                        </div>
-                        <div className="col-6">
-                          <input type="text" className="form-control form-control-sm" placeholder="Pincode" required value={newAddressForm.pincode} onChange={(e) => setNewAddressForm({...newAddressForm, pincode: e.target.value})} />
-                        </div>
-                        <div className="col-12">
-                          <textarea className="form-control form-control-sm" rows="2" placeholder="Full House/Street/Area Address" required value={newAddressForm.address} onChange={(e) => setNewAddressForm({...newAddressForm, address: e.target.value})}></textarea>
-                        </div>
-                      </div>
-                      <button type="submit" className="btn btn-sm btn-primary fw-bold w-100 py-1">Save Address Location</button>
-                    </form>
-                  )}
-
-                  {savedAddresses.length === 0 ? (
-                    <small className={`${subTextClass} d-block py-1`}>No multiple addresses added yet. Primary default address is used for checkout.</small>
-                  ) : (
-                    <div className="d-flex flex-column gap-2 mt-2">
-                      {savedAddresses.map((addr) => (
-                        <div key={addr.id} className={`p-2 rounded border d-flex justify-content-between align-items-center shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-                          <div>
-                            <span className="badge bg-secondary me-2">{addr.title}</span>
-                            <span className="fw-bold small me-2">{addr.name} ({addr.phone})</span>
-                            <small className={`${subTextClass} d-block`}>{addr.address} - {addr.pincode}</small>
-                          </div>
-                          <button className="btn btn-sm btn-outline-danger py-0 px-2" style={{ fontSize: '11px' }} onClick={() => handleDeleteAddress(addr.id)}>Delete</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 6. DANGER ZONE */}
                 <div className="p-3 border border-danger bg-danger bg-opacity-10 rounded mb-2">
                   <h6 className="fw-bold text-danger mb-1"><i className="bi bi-exclamation-triangle-fill me-1"></i>Danger Zone</h6>
-                  <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile, saved addresses, and account history from MongoDB.</p>
+                  <p className="small text-muted mb-3">Deleting your account will permanently remove your stored profile.</p>
                   <button className="btn btn-danger btn-sm fw-bold px-3 py-2 w-100" onClick={handleDeleteAccount}>
                     🗑️ Delete Account Permanently
                   </button>
@@ -1601,77 +1619,64 @@ function App() {
         </div>
       )}
 
-      {/* PRIVACY POLICY MODAL */}
-      {showPrivacyPolicyModal && (
-        <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1" style={{ zIndex: 1060 }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className={`modal-content border-0 shadow-lg p-3 p-md-4 rounded-4 ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
-              <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                <h5 className="fw-bold mb-0 text-info"><i className="bi bi-shield-lock-fill me-2"></i>Store Privacy Policy</h5>
-                <button type="button" className={`btn-close ${darkMode ? 'btn-close-white' : ''}`} onClick={navigateBack}></button>
-              </div>
-
-              <div className={`p-3 rounded border overflow-auto ${darkMode ? 'bg-secondary bg-opacity-25 border-secondary' : 'bg-light'}`} style={{ maxHeight: '320px' }}>
-                <h6 className="fw-bold">1. Information Collection & Usage</h6>
-                <p className={`small ${subTextClass}`}>
-                  TechStore collects user name, contact number, and shipping address solely for processing and delivering orders smoothly.
-                </p>
-                <h6 className="fw-bold">2. Data Protection & Security</h6>
-                <p className={`small ${subTextClass}`}>
-                  Your personal data is encrypted and securely saved in database servers. We never sell or share user information with third-party advertisers.
-                </p>
-                <h6 className="fw-bold">3. User Rights</h6>
-                <p className={`small ${subTextClass}`}>
-                  Customers retain full rights to edit their profile details or delete their account instantly at any time from the Account Settings menu.
-                </p>
-              </div>
-
-              <div className="d-flex justify-content-end mt-3 pt-2 border-top">
-                <button type="button" className="btn btn-info fw-bold text-white px-4" onClick={navigateBack}>I Understand</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CATEGORY MENU MODAL */}
+      {/* 🟢 🌳 NESTED CATEGORY TREE MENU MODAL */}
       {showCategoryMenu && (
         <div className="modal show d-block bg-dark bg-opacity-50" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className={`modal-content border-0 shadow-lg rounded-4 overflow-hidden ${darkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
               <div className="modal-header bg-dark text-white">
                 <h5 className="modal-title fw-bold text-warning mb-0">
-                  <i className="bi bi-grid-3x3-gap-fill me-2"></i>Select Category
+                  <i className="bi bi-grid-3x3-gap-fill me-2"></i>Browse Categories
                 </h5>
                 <button type="button" className="btn-close btn-close-white" onClick={navigateBack}></button>
               </div>
-              <div className={`modal-body p-3 ${darkMode ? 'bg-dark' : 'bg-light'}`}>
-                <div className="d-flex flex-column gap-2">
-                  {categoriesList.map((cat, idx) => (
-                    <button
-                      key={idx}
-                      className={`btn text-start fw-bold py-2 px-3 rounded-3 d-flex align-items-center justify-content-between ${
-                        selectedCategory === cat 
-                          ? 'btn-warning text-dark shadow-sm' 
-                          : darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'
-                      }`}
-                      onClick={() => {
-                        setSelectedCategory(cat);
-                        navigateToView('HOME', { page: 1, category: cat });
-                      }}
-                    >
-                      <span>📦 {cat}</span>
-                      {selectedCategory === cat && <i className="bi bi-check-circle-fill text-dark"></i>}
-                    </button>
-                  ))}
-                </div>
+              <div className={`modal-body p-3 overflow-auto ${darkMode ? 'bg-dark' : 'bg-light'}`} style={{ maxHeight: '65vh' }}>
+                
+                {/* 1. Show All Products Option */}
+                <button
+                  type="button"
+                  className={`btn text-start fw-bold py-2 px-3 rounded-3 w-100 d-flex align-items-center justify-content-between mb-2 shadow-sm ${
+                    selectedCategory === 'All'
+                      ? 'btn-warning text-dark' 
+                      : darkMode ? 'btn-dark text-white border-secondary' : 'btn-white bg-white text-dark border'
+                  }`}
+                  onClick={() => {
+                    setSelectedCategory('All');
+                    navigateToView('HOME', { page: 1, category: 'All' });
+                  }}
+                >
+                  <span>🌟 All Store Products</span>
+                  {selectedCategory === 'All' && <i className="bi bi-check-circle-fill text-dark"></i>}
+                </button>
+
+                {/* 2. Render Infinite Nested Hierarchy Tree */}
+                {categoryTree.length > 0 ? (
+                  renderCategoryMenuTree(categoryTree)
+                ) : (
+                  <div className="d-flex flex-column gap-1">
+                    {Array.from(new Set(products.map(p => p.category).filter(Boolean))).map((cat, idx) => (
+                      <button
+                        key={idx}
+                        className={`btn text-start fw-bold py-2 px-3 rounded-3 ${
+                          selectedCategory === cat ? 'btn-warning text-dark' : 'btn-light border'
+                        }`}
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          navigateToView('HOME', { page: 1, category: cat });
+                        }}
+                      >
+                        📁 {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & DYNAMIC VARIANT PRICING) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & 100% DYNAMIC ATTRIBUTES PRICING) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1684,7 +1689,7 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-start">
               
-              {/* 📸 LEFT COLUMN: MAIN LARGE IMAGE + CLICKABLE THUMBNAIL GALLERY */}
+              {/* 📸 LEFT COLUMN: MAIN DISPLAY IMAGE + CLICKABLE THUMBNAIL GALLERY */}
               <div className="col-lg-5 text-center">
                 <div 
                   className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
@@ -1747,11 +1752,20 @@ function App() {
                 )}
               </div>
 
-              {/* RIGHT COLUMN: PRODUCT INFO, VARIANTS & PURCHASE */}
+              {/* RIGHT COLUMN: DYNAMIC ATTRIBUTES SELECTORS & PRICE SWITCH */}
               <div className="col-lg-7 d-flex flex-column">
-                <span className="badge bg-primary text-uppercase px-3 py-2 fw-bold w-auto me-auto mb-2">
-                  {selectedProductDetail.category || 'General'}
-                </span>
+                
+                {/* Full Category Hierarchy Trail */}
+                <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
+                  {(selectedProductDetail.categoryPath && selectedProductDetail.categoryPath.length > 0 
+                    ? selectedProductDetail.categoryPath 
+                    : [selectedProductDetail.category || 'General']
+                  ).map((catStep, sIdx) => (
+                    <span key={sIdx} className="badge bg-primary text-uppercase px-2 py-1 fw-bold">
+                      {sIdx > 0 ? `› ${catStep}` : catStep}
+                    </span>
+                  ))}
+                </div>
                 
                 <h1 className="fw-bold mb-2 fs-3 fs-md-2">{selectedProductDetail.name}</h1>
                 
@@ -1760,56 +1774,93 @@ function App() {
                     {avgRating} ★
                   </span>
                   <span className={`small fw-semibold ${subTextClass}`}>
-                    ({totalReviewsCount} Verified Customer Rating & Reviews)
+                    ({totalReviewsCount} Customer Rating & Reviews)
                   </span>
                 </div>
 
-                {/* 🟢 DYNAMIC PRICE ACCORDING TO SELECTED SIZE/OPTION */}
+                {/* 🟢 DYNAMIC PRICE FOR CURRENTLY MATCHED VARIANT */}
                 <div className="d-flex align-items-baseline gap-3 mb-3">
                   <h1 className="text-success fw-bold display-6 m-0">
-                    ₹{selectedVariant ? selectedVariant.price : selectedProductDetail.price}
+                    ₹{matchedVariant ? matchedVariant.price : selectedProductDetail.price}
                   </h1>
                   <span className={`text-decoration-line-through fs-5 ${subTextClass}`}>
-                    ₹{Math.round((selectedVariant ? selectedVariant.price : selectedProductDetail.price) * 1.15)}
+                    ₹{Math.round((matchedVariant ? matchedVariant.price : selectedProductDetail.price) * 1.15)}
                   </span>
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                {/* 🟢 INTERACTIVE SIZE & COLOR VARIANT SELECTOR BUTTONS */}
-                {selectedProductDetail.variants && selectedProductDetail.variants.length > 0 && (
+                {/* 🟢 100% DYNAMIC ATTRIBUTE SELECTORS (Capacity, Speed, Weight, Size etc.) */}
+                {selectedProductDetail.dynamicAttributeNames && selectedProductDetail.dynamicAttributeNames.length > 0 ? (
                   <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
-                    <label className="fw-bold small d-block mb-2 text-primary">
-                      <i className="bi bi-tag-fill me-1"></i>Choose Size / Option:
-                    </label>
-                    <div className="d-flex flex-wrap gap-2">
-                      {selectedProductDetail.variants.map((v, idx) => {
-                        const isSelected = selectedVariant && selectedVariant.size === v.size && selectedVariant.color === v.color;
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border ${
-                              isSelected 
-                                ? 'btn-warning text-dark border-warning shadow-sm' 
-                                : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
-                            }`}
-                            onClick={() => setSelectedVariant(v)}
-                          >
-                            <span>{v.color ? `${v.color} - ` : ''}<b>{v.size}</b></span>
-                            <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {selectedProductDetail.dynamicAttributeNames.map((attrName, aIdx) => {
+                      const distinctOptions = getDistinctValuesForAttribute(attrName);
+                      if (distinctOptions.length === 0) return null;
+
+                      return (
+                        <div key={aIdx} className="mb-3">
+                          <label className="fw-bold small d-block mb-2 text-primary">
+                            <i className="bi bi-sliders me-1"></i>Select {attrName}:
+                          </label>
+                          <div className="d-flex flex-wrap gap-2">
+                            {distinctOptions.map((optVal, oIdx) => {
+                              const isSelected = selectedAttributes[attrName] === optVal;
+                              return (
+                                <button
+                                  key={oIdx}
+                                  type="button"
+                                  className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border shadow-sm ${
+                                    isSelected 
+                                      ? 'btn-warning text-dark border-warning' 
+                                      : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
+                                  }`}
+                                  onClick={() => handleSelectAttributeValue(attrName, optVal)}
+                                >
+                                  {optVal}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                ) : (
+                  // Fallback for simple size/color variants
+                  selectedProductDetail.variants && selectedProductDetail.variants.length > 0 && (
+                    <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+                      <label className="fw-bold small d-block mb-2 text-primary">
+                        <i className="bi bi-tag-fill me-1"></i>Select Option / Size:
+                      </label>
+                      <div className="d-flex flex-wrap gap-2">
+                        {selectedProductDetail.variants.map((v, idx) => {
+                          const isSelected = matchedVariant === v;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border ${
+                                isSelected 
+                                  ? 'btn-warning text-dark border-warning shadow-sm' 
+                                  : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
+                              }`}
+                              onClick={() => setMatchedVariant(v)}
+                            >
+                              <span>{v.size || v.color || `Option #${idx + 1}`}</span>
+                              <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
                 )}
 
                 <div className={`row g-2 mb-4 p-3 rounded-3 border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                   <div className="col-6">
                     <span className={`small d-block fw-bold ${subTextClass}`}>Availability:</span>
-                    {getProductStock(selectedProductDetail, selectedVariant) > 0 ? (
+                    {getProductStock(selectedProductDetail, matchedVariant) > 0 ? (
                       <span className="text-success fw-bold fs-6">
-                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail, selectedVariant)} Left)
+                        <i className="bi bi-check-circle-fill me-1"></i>In Stock ({getProductStock(selectedProductDetail, matchedVariant)} Left)
                       </span>
                     ) : (
                       <span className="text-danger fw-bold fs-6"><i className="bi bi-x-circle-fill me-1"></i>Out of Stock (0 Left)</span>
@@ -1831,20 +1882,20 @@ function App() {
                 <div className="mt-auto d-flex gap-3">
                   <button 
                     className={`btn btn-lg fw-bold flex-grow-1 shadow-sm py-3 fs-5 ${
-                      getProductStock(selectedProductDetail, selectedVariant) <= 0 
+                      getProductStock(selectedProductDetail, matchedVariant) <= 0 
                         ? 'btn-secondary disabled' 
                         : 'btn-warning text-dark'
                     }`}
-                    disabled={getProductStock(selectedProductDetail, selectedVariant) <= 0}
+                    disabled={getProductStock(selectedProductDetail, matchedVariant) <= 0}
                     onClick={() => {
-                      addToCart(selectedProductDetail, selectedVariant);
+                      addToCart(selectedProductDetail, matchedVariant);
                       navigateToView('CART');
                     }}
                   >
                     <i className="bi bi-cart-plus-fill me-2"></i>
-                    {getProductStock(selectedProductDetail, selectedVariant) <= 0 
+                    {getProductStock(selectedProductDetail, matchedVariant) <= 0 
                       ? 'Out of Stock' 
-                      : `Add to Cart (₹${selectedVariant ? selectedVariant.price : selectedProductDetail.price})`
+                      : `Add to Cart (₹${matchedVariant ? matchedVariant.price : selectedProductDetail.price})`
                     }
                   </button>
                 </div>
@@ -2166,7 +2217,7 @@ function App() {
                   })}
                 </div>
 
-                {/* 🟢 📱 SLEEK HORIZONTAL SWIPEABLE PAGINATION BOX (RIGHT-TO-LEFT & LEFT-TO-RIGHT) */}
+                {/* 🟢 📱 SLEEK HORIZONTAL SWIPEABLE PAGINATION BOX */}
                 {totalPages > 1 && (
                   <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
                     <div 
@@ -2216,10 +2267,9 @@ function App() {
         </>
       )}
 
-      {/* 🟢 FOOTER WITH VISIBLE APP DOWNLOAD (HIDDEN INSIDE INSTALLED APP) */}
+      {/* 🟢 FOOTER */}
       <footer className="bg-dark text-white pt-4 pb-3 border-top mt-5">
         <div className="container">
-          
           {!isRunningStandalone() && (
             <div className="row bg-secondary bg-opacity-25 rounded-4 p-3 p-md-4 mb-4 align-items-center border border-secondary">
               <div className="col-md-7 text-start">
@@ -2370,7 +2420,6 @@ function App() {
                                   <button 
                                     className="btn btn-sm btn-link text-danger text-decoration-none fw-bold px-2 py-0 fs-5"
                                     onClick={() => updateCartQty(cartKey, -1)}
-                                    title="Decrease quantity"
                                   >
                                     -
                                   </button>
@@ -2378,7 +2427,6 @@ function App() {
                                   <button 
                                     className="btn btn-sm btn-link text-success text-decoration-none fw-bold px-2 py-0 fs-5"
                                     onClick={() => updateCartQty(cartKey, 1)}
-                                    title="Increase quantity"
                                   >
                                     +
                                   </button>
@@ -2634,7 +2682,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
                             <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light'}`}>{ord.paymentMethod || 'COD'}</span>
+                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light text-dark'}`}>{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
                                 <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
