@@ -59,8 +59,20 @@ const getProductStock = (p, selectedVariant = null) => {
 };
 
 function App() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 🟢 1. Products State with Instant Local Cache
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('techstore_cached_products');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem('techstore_cached_products');
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -191,13 +203,22 @@ function App() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // MONGODB REAL BANNERS STATE
-  const [heroBanners, setHeroBanners] = useState([]);
-  const [bannersLoading, setBannersLoading] = useState(true);
+  // 🟢 2. Banners State with Instant Local Cache
+  const [heroBanners, setHeroBanners] = useState(() => {
+    try {
+      const cached = localStorage.getItem('techstore_cached_banners');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [bannersLoading, setBannersLoading] = useState(() => {
+    return !localStorage.getItem('techstore_cached_banners');
+  });
+
   const [currentSlide, setCurrentSlide] = useState(0);
-
   const [allStoreOrders, setAllStoreOrders] = useState([]);
-
   const [coupons, setCoupons] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -208,7 +229,7 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
-  // 🔒 🟢 AUTOMATIC BACKGROUND BODY SCROLL LOCKER WHEN ANY MODAL/WINDOW IS OPEN
+  // 🔒 🟢 AUTOMATIC BACKGROUND BODY SCROLL LOCKER
   useEffect(() => {
     const isAnyModalOpen = showCartModal || showCheckoutModal || showOrderTracking || 
                            showProfileDrawer || showEditProfileModal || showAccountSettingsModal || 
@@ -255,7 +276,7 @@ function App() {
     setSelectedProductDetail(null);
     setSelectedAttributes({});
     setMatchedVariant(null);
-    setShowChatbot(false); // 🟢 Auto-close chatbot on switching to any view/modal
+    setShowChatbot(false); // 🟢 Auto-close chatbot on opening any modal/page
 
     if (state && typeof state.page === 'number') {
       setCurrentPage(state.page);
@@ -380,7 +401,6 @@ function App() {
     window.history.back();
   };
 
-  // 🟢 HORIZONTAL SWIPEABLE PAGE CHANGE
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
       navigateToView('HOME', { page: pageNumber });
@@ -514,13 +534,12 @@ function App() {
 
   const fetchBanners = async (isInitial = false) => {
     try {
-      if (isInitial) setBannersLoading(true);
+      if (isInitial && !localStorage.getItem('techstore_cached_banners')) setBannersLoading(true);
       const res = await axios.get(`${BASE_URL}/api/banners`);
       if (res.data && res.data.length > 0) {
         const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
         setHeroBanners(cleanBanners);
-      } else {
-        setHeroBanners([]);
+        localStorage.setItem('techstore_cached_banners', JSON.stringify(cleanBanners));
       }
     } catch (err) {
       console.error('Error fetching banners:', err);
@@ -531,11 +550,12 @@ function App() {
 
   const fetchProducts = async (setInitial = false) => {
     try {
-      if (setInitial) setLoading(true);
+      if (setInitial && !localStorage.getItem('techstore_cached_products')) setLoading(true);
       const res = await axios.get(`${BASE_URL}/api/products`);
       const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
       if (productList.length > 0) {
         setProducts(productList);
+        localStorage.setItem('techstore_cached_products', JSON.stringify(productList));
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -872,7 +892,6 @@ function App() {
     return ord.userEmail && ord.userEmail.toLowerCase() === user.email.toLowerCase();
   });
 
-  // 🟢 PRIORITY RANK SORTING & NESTED CATEGORY FILTERING
   const filteredProducts = products
     .filter(p => {
       const matchesCategory = selectedCategory === 'All' || 
@@ -893,7 +912,6 @@ function App() {
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
-  // 🟢 🎯 ORDER ATTRIBUTES: Color / Model FIRST, Size / Others SECOND
   const getOrderedAttributeNames = () => {
     if (!selectedProductDetail?.dynamicAttributeNames) return [];
     const list = [...selectedProductDetail.dynamicAttributeNames];
@@ -909,7 +927,6 @@ function App() {
     return list;
   };
 
-  // 🟢 🎯 STRICT AVAILABLE-ONLY ATTRIBUTE VALUES FINDER
   const getAvailableValuesForAttribute = (attrName, attrIndex, orderedAttrList) => {
     if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return [];
 
@@ -943,7 +960,6 @@ function App() {
     return Array.from(validSubValues);
   };
 
-  // 🟢 🎯 SMART STRICT SELECTOR
   const handleSelectAttributeValue = (attrName, value) => {
     if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return;
 
@@ -976,7 +992,6 @@ function App() {
     }
   };
 
-  // 🟢 ADD TO CART
   const addToCart = (product, specificVariant = null) => {
     const variantToUse = specificVariant || matchedVariant;
     const currentPrice = variantToUse ? Number(variantToUse.price) : Number(product.price);
@@ -2899,7 +2914,6 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
-                                  {/* 🟢 1:1 SQUARE THUMBNAIL */}
                                   <img 
                                     src={item.image || DEFAULT_FALLBACK_IMAGE} 
                                     alt={item.name} 
