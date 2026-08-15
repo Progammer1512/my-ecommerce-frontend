@@ -336,6 +336,7 @@ function App() {
     window.history.back();
   };
 
+  // 🟢 HORIZONTAL SWIPEABLE PAGE CHANGE
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
       navigateToView('HOME', { page: pageNumber });
@@ -343,6 +344,7 @@ function App() {
     }
   };
 
+  // 📲 UNIVERSAL POPSTATE LISTENER
   useEffect(() => {
     if (!window.history.state || !window.history.state.view) {
       window.history.replaceState({ view: 'HOME', page: 1, category: 'All', search: '' }, '', window.location.href);
@@ -366,6 +368,7 @@ function App() {
     navigateToView('HOME', { page: 1, category: 'All', search: '' });
   };
 
+  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
   useEffect(() => {
     if (isRunningStandalone() || !isMobileDevice()) {
       setShowAppDownloadModal(false);
@@ -384,6 +387,7 @@ function App() {
     }
   }, []);
 
+  // 📲 NATIVE APP INSTALL EVENT LISTENER
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
@@ -1658,7 +1662,7 @@ function App() {
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                             {/* 🟢 1:1 SQUARE THUMBNAIL */}
                             <div 
-                              style={{ width: '48px', height: '48px', aspectRatio: '1 / 1', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
+                              style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', aspectRatio: '1 / 1', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
                               onClick={() => handleOpenProductDetail(item)}
                               title="Click to view details"
                             >
@@ -1666,7 +1670,7 @@ function App() {
                                 src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                               />
                             </div>
                             <div className="flex-grow-1 text-truncate" style={{ cursor: 'pointer' }} onClick={() => handleOpenProductDetail(item)}>
@@ -1715,6 +1719,7 @@ function App() {
               </div>
               <div className={`modal-body p-3 overflow-auto ${darkMode ? 'bg-dark' : 'bg-light'}`} style={{ maxHeight: '65vh' }}>
                 
+                {/* 1. Show All Products Option */}
                 <button
                   type="button"
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 w-100 d-flex align-items-center justify-content-between mb-2 shadow-sm ${
@@ -1731,6 +1736,7 @@ function App() {
                   {selectedCategory === 'All' && <i className="bi bi-check-circle-fill text-dark"></i>}
                 </button>
 
+                {/* 2. Render Infinite Nested Hierarchy Tree */}
                 {categoryTree.length > 0 ? (
                   renderCategoryMenuTree(categoryTree)
                 ) : (
@@ -1799,7 +1805,7 @@ function App() {
                       style={{ 
                         width: '100%', 
                         height: '100%', 
-                        objectFit: 'cover', 
+                        objectFit: 'contain', 
                         borderRadius: '18px',
                         transition: '0.3s ease-in-out'
                       }}
@@ -1817,13 +1823,13 @@ function App() {
                           key={idx} 
                           onClick={() => setActiveGalleryImage(imgUrl)}
                           className={`rounded-3 p-1 border shadow-sm ${isSelected ? 'border-warning border-3' : 'border-secondary opacity-75'}`}
-                          style={{ width: '60px', height: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
+                          style={{ width: '60px', height: '60px', minWidth: '60px', minHeight: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
                           title={`View Angle #${idx + 1}`}
                         >
                           <img 
                             src={imgUrl || DEFAULT_FALLBACK_IMAGE} 
                             alt={`Thumbnail ${idx + 1}`} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '6px' }}
                             onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                           />
                         </div>
@@ -2060,20 +2066,20 @@ function App() {
             
             <div className="row g-2 g-md-4">
               {products.filter(p => p._id !== selectedProductDetail._id).slice(0, 6).map((p) => (
-                <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                  <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden ${cardBgClass}`}>
+                <div key={p._id} className="col-6 col-md-6 col-lg-4 d-flex">
+                  <div className={`card w-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column ${cardBgClass}`}>
                     <div 
                       className={`text-center p-2 p-md-3 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`}
-                      style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer' }}
+                      style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
-                      <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
                         <img 
                           src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                           className="shadow-sm" 
                           alt={p.name} 
                           onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                         />
                       </div>
                     </div>
@@ -2213,8 +2219,8 @@ function App() {
                     const isWishlisted = wishlist.some(w => w._id === p._id);
                     
                     return (
-                      <div key={p._id} className="col-6 col-md-6 col-lg-4">
-                        <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
+                      <div key={p._id} className="col-6 col-md-6 col-lg-4 d-flex">
+                        <div className={`card w-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
                           
                           {/* WISHLIST BUTTON */}
                           <button 
@@ -2226,10 +2232,10 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 1:1 PERFECT SQUARE IMAGE FRAME */}
+                          {/* 🟢 1:1 PERFECT SQUARE FIXED IMAGE FRAME (CONTAINED & CENTERED) */}
                           <div 
                             className={`text-center p-2 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
-                            style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer' }}
+                            style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
                             <div 
@@ -2241,7 +2247,8 @@ function App() {
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 justifyContent: 'center',
-                                backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa'
+                                backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa',
+                                padding: '6px'
                               }}
                             >
                               <img 
@@ -2251,7 +2258,7 @@ function App() {
                                 style={{ 
                                   width: '100%', 
                                   height: '100%', 
-                                  objectFit: 'cover' 
+                                  objectFit: 'contain' 
                                 }}
                               />
                             </div>
@@ -2478,13 +2485,13 @@ function App() {
                                   title="Click to view product details"
                                 >
                                   {/* 🟢 1:1 SQUARE THUMBNAIL */}
-                                  <div style={{ width: '48px', height: '48px', aspectRatio: '1 / 1', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
+                                  <div style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', aspectRatio: '1 / 1', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)', padding: '2px' }}>
                                     <img 
                                       src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                       alt={item.name} 
                                       className="shadow-sm" 
                                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                      style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                                     />
                                   </div>
                                   <div>
@@ -2758,7 +2765,7 @@ function App() {
                                     width="40" 
                                     height="40" 
                                     onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                    style={{ objectFit: 'cover', borderRadius: '10px', aspectRatio: '1 / 1' }} 
+                                    style={{ objectFit: 'contain', borderRadius: '10px', aspectRatio: '1 / 1' }} 
                                   />
                                   <div>
                                     <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
@@ -2772,7 +2779,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
                             <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light text-dark'}`}>{ord.paymentMethod || 'COD'}</span>
+                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light'}`}>{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
                                 <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
