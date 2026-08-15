@@ -208,6 +208,33 @@ function App() {
   const [shippingPhone, setShippingPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery (COD)');
 
+  // 🔒 🟢 AUTOMATIC BACKGROUND BODY SCROLL LOCKER WHEN ANY MODAL/WINDOW IS OPEN
+  useEffect(() => {
+    const isAnyModalOpen = showCartModal || showCheckoutModal || showOrderTracking || 
+                           showProfileDrawer || showEditProfileModal || showAccountSettingsModal || 
+                           showPrivacyPolicyModal || showCategoryMenu || showSignupModal || 
+                           showLoginModal || showReviewModal || showReturnModal || 
+                           showAppDownloadModal;
+
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.style.touchAction = 'auto';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.style.touchAction = 'auto';
+    };
+  }, [
+    showCartModal, showCheckoutModal, showOrderTracking, showProfileDrawer,
+    showEditProfileModal, showAccountSettingsModal, showPrivacyPolicyModal,
+    showCategoryMenu, showSignupModal, showLoginModal, showReviewModal,
+    showReturnModal, showAppDownloadModal
+  ]);
+
   // =========================================================================
   // 🌟 UNIVERSAL NAVIGATION & PAGINATION STACK MANAGER
   // =========================================================================
