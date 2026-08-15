@@ -101,7 +101,7 @@ function App() {
 
   // 🤖 AI CHATBOT STATES
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'ai', text: '👋 Hello! How can I help you find products or track your order today?' }
+    { sender: 'ai', text: '👋 Hello! Welcome to TechStore. Ask me about products, stock, variants, or tracking your orders!' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -1309,7 +1309,7 @@ function App() {
     });
   };
 
-  // 🤖 AI CHATBOT SUBMIT HANDLER
+  // 🤖 AI CHATBOT SUBMIT HANDLER (WITH USER EMAIL & CONTEXT REFRESH)
   const handleChatSubmit = async (e) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
@@ -1320,7 +1320,11 @@ function App() {
     setChatLoading(true);
 
     try {
-      const res = await axios.post(`${BASE_URL}/api/ai/chat`, { message: userMsg });
+      const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
+      const res = await axios.post(`${BASE_URL}/api/ai/chat`, { 
+        message: userMsg,
+        userEmail: activeUser ? activeUser.email : null 
+      });
       const aiReply = res.data?.reply || "I couldn't find information regarding that.";
       setChatMessages(prev => [...prev, { sender: 'ai', text: aiReply }]);
     } catch (err) {
@@ -2434,15 +2438,15 @@ function App() {
         </div>
       </footer>
 
-      {/* FLOATING AI ASSISTANT */}
-      <div className="position-fixed bottom-0 end-0 m-2 m-md-3 z-3">
+      {/* 🟢 FLOATING AI ASSISTANT (ALWAYS ON TOP - zIndex: 9999) */}
+      <div className="position-fixed bottom-0 end-0 m-3" style={{ zIndex: 9999 }}>
         {showChatbot ? (
-          <div className={`card shadow-lg border-0 ${darkMode ? 'bg-dark text-white' : ''}`} style={{ width: '300px', height: '400px' }}>
+          <div className={`card shadow-lg border-0 ${darkMode ? 'bg-dark text-white' : ''}`} style={{ width: '320px', height: '420px' }}>
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
               <span className="fw-bold small"><i className="bi bi-robot me-1"></i>Store AI Assistant</span>
               <button className="btn-close btn-close-white" onClick={() => setShowChatbot(false)}></button>
             </div>
-            <div className={`card-body overflow-auto p-2 d-flex flex-column gap-2 ${darkMode ? 'bg-dark' : 'bg-light'}`} style={{ height: '300px' }}>
+            <div className={`card-body overflow-auto p-2 d-flex flex-column gap-2 ${darkMode ? 'bg-dark' : 'bg-light'}`} style={{ height: '320px' }}>
               {chatMessages.map((msg, idx) => (
                 <div key={idx} className={`p-2 rounded small shadow-sm ${msg.sender === 'user' ? 'bg-warning text-dark align-self-end ms-4' : (darkMode ? 'bg-secondary bg-opacity-50 text-white align-self-start me-4' : 'bg-white text-dark align-self-start me-4')}`} style={{ whiteSpace: 'pre-line', maxWidth: '85%' }}>
                   {msg.text}
@@ -2454,7 +2458,7 @@ function App() {
               <input 
                 type="text" 
                 className={`form-control form-control-sm ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
-                placeholder="Ask about products, variants, stock..." 
+                placeholder="Ask about orders, products, stock..." 
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
               />
@@ -2464,7 +2468,7 @@ function App() {
         ) : (
           <button 
             className="btn btn-primary rounded-circle shadow-lg fw-bold d-flex align-items-center justify-content-center" 
-            style={{ width: '48px', height: '48px', fontSize: '12px' }}
+            style={{ width: '52px', height: '52px', fontSize: '13px' }}
             onClick={() => setShowChatbot(true)}
             title="AI Assistant"
           >
