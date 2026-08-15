@@ -1013,7 +1013,7 @@ function App() {
         price: cartItem.price,
         image: cartItem.image || DEFAULT_FALLBACK_IMAGE,
         images: cartItem.images || [cartItem.image || DEFAULT_FALLBACK_IMAGE],
-        description: cartItem.description || 'Premium store product added to your shopping cart.',
+        description: 'Premium store product added to your shopping cart.',
         category: cartItem.category || 'Store Item',
         countInStock: cartItem.countInStock !== undefined ? cartItem.countInStock : (cartItem.stock || 10)
       });
@@ -1656,8 +1656,9 @@ function App() {
                       {wishlist.map((item) => (
                         <div key={item._id} className="col-12 col-sm-6">
                           <div className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+                            {/* 🟢 1:1 SQUARE THUMBNAIL */}
                             <div 
-                              style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
+                              style={{ width: '48px', height: '48px', aspectRatio: '1 / 1', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
                               onClick={() => handleOpenProductDetail(item)}
                               title="Click to view details"
                             >
@@ -1714,7 +1715,6 @@ function App() {
               </div>
               <div className={`modal-body p-3 overflow-auto ${darkMode ? 'bg-dark' : 'bg-light'}`} style={{ maxHeight: '65vh' }}>
                 
-                {/* 1. Show All Products Option */}
                 <button
                   type="button"
                   className={`btn text-start fw-bold py-2 px-3 rounded-3 w-100 d-flex align-items-center justify-content-between mb-2 shadow-sm ${
@@ -1731,7 +1731,6 @@ function App() {
                   {selectedCategory === 'All' && <i className="bi bi-check-circle-fill text-dark"></i>}
                 </button>
 
-                {/* 2. Render Infinite Nested Hierarchy Tree */}
                 {categoryTree.length > 0 ? (
                   renderCategoryMenuTree(categoryTree)
                 ) : (
@@ -1758,7 +1757,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (COLOR-FIRST DYNAMIC ATTRIBUTES & LIVE IMAGES) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (COLOR-FIRST DYNAMIC ATTRIBUTES & SQUARE GALLERY) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1771,11 +1770,11 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-start">
               
-              {/* 📸 LEFT COLUMN: MAIN DISPLAY IMAGE + CLICKABLE THUMBNAIL GALLERY */}
+              {/* 📸 LEFT COLUMN: SQUARE DISPLAY IMAGE + THUMBNAILS */}
               <div className="col-lg-5 text-center">
                 <div 
                   className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
-                  style={{ minHeight: '320px' }}
+                  style={{ width: '100%', aspectRatio: '1 / 1' }}
                 >
                   <button 
                     className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm border p-2 d-flex align-items-center justify-content-center"
@@ -1790,8 +1789,8 @@ function App() {
                     10% OFF
                   </span>
                   
-                  {/* Large Active Display Image */}
-                  <div style={{ width: '92%', height: '320px', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Square Main Image Frame */}
+                  <div style={{ width: '100%', height: '100%', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img 
                       src={activeGalleryImage || selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
                       alt={selectedProductDetail.name} 
@@ -1818,7 +1817,7 @@ function App() {
                           key={idx} 
                           onClick={() => setActiveGalleryImage(imgUrl)}
                           className={`rounded-3 p-1 border shadow-sm ${isSelected ? 'border-warning border-3' : 'border-secondary opacity-75'}`}
-                          style={{ width: '60px', height: '60px', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
+                          style={{ width: '60px', height: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
                           title={`View Angle #${idx + 1}`}
                         >
                           <img 
@@ -2065,10 +2064,10 @@ function App() {
                   <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden ${cardBgClass}`}>
                     <div 
                       className={`text-center p-2 p-md-3 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`}
-                      style={{ height: '160px', cursor: 'pointer' }}
+                      style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
-                      <div style={{ width: '90%', height: '135px', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img 
                           src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                           className="shadow-sm" 
@@ -2227,10 +2226,10 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 FULLY CLIPPED ROUNDED IMAGE FRAME WITH FALLBACK */}
+                          {/* 🟢 1:1 PERFECT SQUARE IMAGE FRAME */}
                           <div 
                             className={`text-center p-2 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
-                            style={{ height: '170px', cursor: 'pointer' }}
+                            style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
                             <div 
@@ -2478,7 +2477,8 @@ function App() {
                                   onClick={() => handleViewProductFromCart(item)}
                                   title="Click to view product details"
                                 >
-                                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
+                                  {/* 🟢 1:1 SQUARE THUMBNAIL */}
+                                  <div style={{ width: '48px', height: '48px', aspectRatio: '1 / 1', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
                                     <img 
                                       src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                       alt={item.name} 
@@ -2750,6 +2750,7 @@ function App() {
                             <div className="d-flex flex-wrap gap-2">
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
+                                  {/* 🟢 1:1 SQUARE THUMBNAIL */}
                                   <img 
                                     src={item.image || DEFAULT_FALLBACK_IMAGE} 
                                     alt={item.name} 
@@ -2757,7 +2758,7 @@ function App() {
                                     width="40" 
                                     height="40" 
                                     onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                    style={{ objectFit: 'cover', borderRadius: '10px' }} 
+                                    style={{ objectFit: 'cover', borderRadius: '10px', aspectRatio: '1 / 1' }} 
                                   />
                                   <div>
                                     <div className="fw-bold small text-truncate" style={{ maxWidth: '120px' }}>{item.name}</div>
