@@ -1670,7 +1670,7 @@ function App() {
                                 src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                               />
                             </div>
                             <div className="flex-grow-1 text-truncate" style={{ cursor: 'pointer' }} onClick={() => handleOpenProductDetail(item)}>
@@ -1805,7 +1805,7 @@ function App() {
                       style={{ 
                         width: '100%', 
                         height: '100%', 
-                        objectFit: 'contain', 
+                        objectFit: 'cover', 
                         borderRadius: '18px',
                         transition: '0.3s ease-in-out'
                       }}
@@ -1829,7 +1829,7 @@ function App() {
                           <img 
                             src={imgUrl || DEFAULT_FALLBACK_IMAGE} 
                             alt={`Thumbnail ${idx + 1}`} 
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '6px' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
                             onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                           />
                         </div>
@@ -2069,19 +2069,17 @@ function App() {
                 <div key={p._id} className="col-6 col-md-6 col-lg-4 d-flex">
                   <div className={`card w-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column ${cardBgClass}`}>
                     <div 
-                      className={`text-center p-2 p-md-3 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`}
+                      className={`text-center p-0 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`}
                       style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
-                      <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
-                        <img 
-                          src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
-                          className="shadow-sm" 
-                          alt={p.name} 
-                          onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-                        />
-                      </div>
+                      <img 
+                        src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                        className="shadow-sm" 
+                        alt={p.name} 
+                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
                     </div>
                     <div className={`card-body p-2 p-md-3 d-flex flex-column border-top ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                       <span className="badge bg-secondary mb-1 w-auto me-auto" style={{ fontSize: '10px' }}>{p.category || 'General'}</span>
@@ -2232,36 +2230,22 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 1:1 PERFECT SQUARE FIXED IMAGE FRAME (CONTAINED & CENTERED) */}
+                          {/* 🟢 1:1 PERFECT SQUARE FIXED IMAGE FRAME (FULL COVER & EDGE-TO-EDGE) */}
                           <div 
-                            className={`text-center p-2 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
+                            className={`text-center p-0 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
-                            <div 
+                            <img 
+                              src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                              alt={p.name} 
+                              onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                               style={{ 
                                 width: '100%', 
                                 height: '100%', 
-                                borderRadius: '16px', 
-                                overflow: 'hidden', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa',
-                                padding: '6px'
+                                objectFit: 'cover' 
                               }}
-                            >
-                              <img 
-                                src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
-                                alt={p.name} 
-                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                style={{ 
-                                  width: '100%', 
-                                  height: '100%', 
-                                  objectFit: 'contain' 
-                                }}
-                              />
-                            </div>
+                            />
                           </div>
                           
                           <div className={`card-body p-2 p-md-3 d-flex flex-column border-top flex-grow-1 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
@@ -2491,7 +2475,7 @@ function App() {
                                       alt={item.name} 
                                       className="shadow-sm" 
                                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                                      style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                     />
                                   </div>
                                   <div>
@@ -2779,7 +2763,7 @@ function App() {
                           <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
                             <span className="fw-bold text-success small">Total Amount: ₹{ord.totalPrice}</span>
                             <div className="d-flex align-items-center gap-2">
-                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light'}`}>{ord.paymentMethod || 'COD'}</span>
+                              <span className={`badge border me-1 small ${darkMode ? 'bg-dark text-white border-secondary' : 'bg-light text-dark'}`}>{ord.paymentMethod || 'COD'}</span>
                               {ord.status === 'Delivered' && (
                                 <button className="btn btn-sm btn-outline-danger fw-bold py-0 px-2 small" onClick={() => handleOpenReturnModal(ord)}>🔄 Return</button>
                               )}
