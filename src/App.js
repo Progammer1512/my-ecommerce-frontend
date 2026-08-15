@@ -2335,27 +2335,14 @@ function App() {
                   })}
                 </div>
 
-                {/* 🟢 📱 DESKTOP PREV/NEXT ARROWS + MOBILE SWIPEABLE PAGINATION BOX */}
+                {/* 🟢 📱 SMART RESPONSIVE PAGINATION (SWIPEABLE BOX FOR MOBILE, SLIDING WINDOW 1-5 FOR DESKTOP) */}
                 {totalPages > 1 && (
                   <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
-                    <div className="d-flex align-items-center gap-2">
-                      
-                      {/* DESKTOP PREV BUTTON */}
-                      <button
-                        type="button"
-                        className={`btn btn-sm fw-bold rounded-3 border d-none d-md-inline-flex align-items-center justify-content-center shadow-sm ${
-                          currentPage === 1 ? 'btn-outline-secondary disabled' : darkMode ? 'btn-outline-light text-white' : 'btn-light text-dark'
-                        }`}
-                        style={{ height: '40px', padding: '0 14px' }}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &larr; Prev
-                      </button>
-
-                      {/* PAGINATION NUMBERS BAR */}
+                    
+                    {/* 1. MOBILE VIEW: Full Swipeable Box */}
+                    <div className="d-block d-md-none w-100 text-center">
                       <div 
-                        className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
+                        className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 mx-auto ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
                         style={{ 
                           maxWidth: '100%', 
                           overflowX: 'auto', 
@@ -2376,12 +2363,7 @@ function App() {
                                   ? 'btn-warning text-dark border-warning' 
                                   : darkMode ? 'btn-outline-secondary text-white' : 'btn-light border text-dark'
                               }`}
-                              style={{ 
-                                minWidth: '42px', 
-                                height: '40px', 
-                                fontSize: '14px',
-                                flexShrink: 0 
-                              }}
+                              style={{ minWidth: '42px', height: '40px', fontSize: '14px', flexShrink: 0 }}
                               onClick={() => handlePageChange(pageNum)}
                             >
                               {pageNum}
@@ -2389,11 +2371,58 @@ function App() {
                           );
                         })}
                       </div>
+                      <small className={`mt-2 fw-bold small d-block ${subTextClass}`}>
+                        Swipe ↔ Page <b>{currentPage}</b> of <b>{totalPages}</b>
+                      </small>
+                    </div>
 
-                      {/* DESKTOP NEXT BUTTON */}
+                    {/* 2. DESKTOP VIEW: Sliding Window 1-5 with Prev / Next Buttons */}
+                    <div className="d-none d-md-flex align-items-center gap-2">
                       <button
                         type="button"
-                        className={`btn btn-sm fw-bold rounded-3 border d-none d-md-inline-flex align-items-center justify-content-center shadow-sm ${
+                        className={`btn btn-sm fw-bold rounded-3 border d-flex align-items-center justify-content-center shadow-sm ${
+                          currentPage === 1 ? 'btn-outline-secondary disabled' : darkMode ? 'btn-outline-light text-white' : 'btn-light text-dark'
+                        }`}
+                        style={{ height: '40px', padding: '0 14px' }}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        &larr; Prev
+                      </button>
+
+                      <div className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+                        {(() => {
+                          // Calculate sliding window of 5 pages for desktop
+                          let startPage = Math.max(1, currentPage - 2);
+                          let endPage = Math.min(totalPages, startPage + 4);
+                          if (endPage - startPage < 4) {
+                            startPage = Math.max(1, endPage - 4);
+                          }
+
+                          return Array.from({ length: (endPage - startPage + 1) }, (_, i) => startPage + i).map((pageNum) => {
+                            const isActive = currentPage === pageNum;
+                            return (
+                              <button
+                                key={pageNum}
+                                type="button"
+                                className={`btn fw-bold rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm ${
+                                  isActive 
+                                    ? 'btn-warning text-dark border-warning' 
+                                    : darkMode ? 'btn-outline-secondary text-white' : 'btn-light border text-dark'
+                                }`}
+                                style={{ minWidth: '42px', height: '40px', fontSize: '14px' }}
+                                onClick={() => handlePageChange(pageNum)}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+
+                      <button
+                        type="button"
+                        className={`btn btn-sm fw-bold rounded-3 border d-flex align-items-center justify-content-center shadow-sm ${
                           currentPage === totalPages ? 'btn-outline-secondary disabled' : darkMode ? 'btn-outline-light text-white' : 'btn-light text-dark'
                         }`}
                         style={{ height: '40px', padding: '0 14px' }}
@@ -2402,12 +2431,14 @@ function App() {
                       >
                         Next &rarr;
                       </button>
-
                     </div>
-                    
-                    <small className={`mt-2 fw-bold small ${subTextClass}`}>
-                      Page <b>{currentPage}</b> of <b>{totalPages}</b> {isMobileDevice() ? '(Swipe ↔)' : ''}
-                    </small>
+
+                    <div className="d-none d-md-block mt-2">
+                      <small className={`fw-bold small ${subTextClass}`}>
+                        Page <b>{currentPage}</b> of <b>{totalPages}</b>
+                      </small>
+                    </div>
+
                   </div>
                 )}
               </>
