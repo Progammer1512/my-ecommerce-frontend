@@ -227,13 +227,8 @@ function App() {
       case 'PRODUCT_DETAIL':
         const prod = state.product;
         setSelectedProductDetail(prod);
-        setActiveGalleryImage(
-          (prod?.images && prod.images.length > 0)
-            ? prod.images[0]
-            : (prod?.image || DEFAULT_FALLBACK_IMAGE)
-        );
 
-        // Initialize default selected dynamic attributes
+        // Initialize default selected dynamic attributes & variant
         if (prod?.variants && prod.variants.length > 0) {
           const firstVariant = prod.variants[0];
           const initialAttrs = {};
@@ -248,9 +243,29 @@ function App() {
           
           setSelectedAttributes(initialAttrs);
           setMatchedVariant(firstVariant);
+
+          // 📸 Set active image to variant's image if available
+          const firstVarImgs = Array.isArray(firstVariant.images) && firstVariant.images.length > 0
+            ? firstVariant.images
+            : (firstVariant.image ? [firstVariant.image] : []);
+
+          if (firstVarImgs.length > 0) {
+            setActiveGalleryImage(firstVarImgs[0]);
+          } else {
+            setActiveGalleryImage(
+              (prod?.images && prod.images.length > 0)
+                ? prod.images[0]
+                : (prod?.image || DEFAULT_FALLBACK_IMAGE)
+            );
+          }
         } else {
           setSelectedAttributes({});
           setMatchedVariant(null);
+          setActiveGalleryImage(
+            (prod?.images && prod.images.length > 0)
+              ? prod.images[0]
+              : (prod?.image || DEFAULT_FALLBACK_IMAGE)
+          );
         }
 
         window.scrollTo({ top: 0, behavior: 'instant' });
@@ -845,7 +860,7 @@ function App() {
     return Array.from(valuesSet);
   };
 
-  // 🟢 UPDATE SELECTED DYNAMIC ATTRIBUTE & RE-MATCH VARIANT
+  // 🟢 UPDATE SELECTED DYNAMIC ATTRIBUTE & RE-MATCH VARIANT (WITH LIVE GALLERY SWITCH)
   const handleSelectAttributeValue = (attrName, value) => {
     const updatedAttrs = { ...selectedAttributes, [attrName]: value };
     setSelectedAttributes(updatedAttrs);
@@ -862,11 +877,21 @@ function App() {
         });
       });
 
-      if (found) setMatchedVariant(found);
+      if (found) {
+        setMatchedVariant(found);
+        // 📸 Instantly switch display image to the matched variant's dedicated cover photo
+        const varImgs = Array.isArray(found.images) && found.images.length > 0
+          ? found.images
+          : (found.image ? [found.image] : []);
+
+        if (varImgs.length > 0) {
+          setActiveGalleryImage(varImgs[0]);
+        }
+      }
     }
   };
 
-  // 🟢 ADD TO CART (DYNAMIC VARIANT SUPPORT)
+  // 🟢 ADD TO CART (DYNAMIC VARIANT & DEDICATED IMAGE SUPPORT)
   const addToCart = (product, specificVariant = null) => {
     const variantToUse = specificVariant || matchedVariant;
     const currentPrice = variantToUse ? Number(variantToUse.price) : Number(product.price);
@@ -889,6 +914,10 @@ function App() {
       ? `${product._id || product.id}_${attrValuesLabel.replace(/[^a-zA-Z0-9]/g, '_')}`
       : `${product._id || product.id}_BASE`;
 
+    const variantItemImage = (variantToUse && variantToUse.images && variantToUse.images.length > 0)
+      ? variantToUse.images[0]
+      : (variantToUse?.image || activeGalleryImage || product.image || DEFAULT_FALLBACK_IMAGE);
+
     let updatedCart;
     const existing = cart.find(item => item.cartItemKey === variantKey);
 
@@ -903,7 +932,7 @@ function App() {
         selectedOption: attrValuesLabel,
         price: currentPrice,
         qty: 1, 
-        image: activeGalleryImage || product.image || (product.images && product.images[0]) || DEFAULT_FALLBACK_IMAGE 
+        image: variantItemImage
       }];
     }
 
@@ -1183,11 +1212,22 @@ function App() {
 
   const currentBanner = heroBanners[currentSlide] || null;
 
-  const detailGalleryImages = selectedProductDetail
-    ? (Array.isArray(selectedProductDetail.images) && selectedProductDetail.images.length > 0)
-      ? selectedProductDetail.images
-      : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE])
-    : [];
+  // 📸 DYNAMIC GALLERY IMAGES: Show currently matched variant's dedicated gallery if present, else product gallery
+  const detailGalleryImages = (() => {
+    if (matchedVariant) {
+      const varImgs = Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0
+        ? matchedVariant.images
+        : (matchedVariant.image ? [matchedVariant.image] : []);
+      if (varImgs.length > 0) return varImgs;
+    }
+
+    if (selectedProductDetail) {
+      return (Array.isArray(selectedProductDetail.images) && selectedProductDetail.images.length > 0)
+        ? selectedProductDetail.images
+        : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE]);
+    }
+    return [DEFAULT_FALLBACK_IMAGE];
+  })();
 
   // Recursive Category Drawer Tree Renderer
   const renderCategoryMenuTree = (nodes, depth = 0) => {
@@ -1676,7 +1716,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & 100% DYNAMIC ATTRIBUTES PRICING) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & LIVE VARIANT MULTI-IMAGE SWITCHING) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1726,7 +1766,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* 📸 Multi-angle Clickable Thumbnail Strip */}
+                {/* 📸 Multi-angle Clickable Thumbnail Strip (Switches smoothly with Variant) */}
                 {detailGalleryImages.length > 1 && (
                   <div className="d-flex align-items-center justify-content-center gap-2 overflow-auto py-1" style={{ scrollbarWidth: 'none' }}>
                     {detailGalleryImages.map((imgUrl, idx) => {
@@ -1789,7 +1829,7 @@ function App() {
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                {/* 🟢 100% DYNAMIC ATTRIBUTE SELECTORS (Capacity, Speed, Weight, Size etc.) */}
+                {/* 🟢 100% DYNAMIC ATTRIBUTE SELECTORS (Capacity, Speed, Model, Size etc.) */}
                 {selectedProductDetail.dynamicAttributeNames && selectedProductDetail.dynamicAttributeNames.length > 0 ? (
                   <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                     {selectedProductDetail.dynamicAttributeNames.map((attrName, aIdx) => {
@@ -1825,7 +1865,7 @@ function App() {
                     })}
                   </div>
                 ) : (
-                  // Fallback for simple size/color variants
+                  // Fallback for simple variants
                   selectedProductDetail.variants && selectedProductDetail.variants.length > 0 && (
                     <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                       <label className="fw-bold small d-block mb-2 text-primary">
@@ -1843,7 +1883,13 @@ function App() {
                                   ? 'btn-warning text-dark border-warning shadow-sm' 
                                   : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
                               }`}
-                              onClick={() => setMatchedVariant(v)}
+                              onClick={() => {
+                                setMatchedVariant(v);
+                                const vImgs = Array.isArray(v.images) && v.images.length > 0
+                                  ? v.images
+                                  : (v.image ? [v.image] : []);
+                                if (vImgs.length > 0) setActiveGalleryImage(vImgs[0]);
+                              }}
                             >
                               <span>{v.size || v.color || `Option #${idx + 1}`}</span>
                               <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
