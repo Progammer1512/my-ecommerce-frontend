@@ -248,6 +248,11 @@ function App() {
         const prod = state.product;
         setSelectedProductDetail(prod);
 
+        // Auto-refresh AI chat context on product switch
+        setChatMessages([
+          { sender: 'ai', text: `🤖 You are currently viewing **${prod.name}**. Ask me about price, stock, variants, or orders!` }
+        ]);
+
         // Initialize default selected dynamic attributes & variant
         if (prod?.variants && prod.variants.length > 0) {
           const firstVariant = prod.variants[0];
@@ -2330,47 +2335,78 @@ function App() {
                   })}
                 </div>
 
-                {/* 🟢 📱 SLEEK HORIZONTAL SWIPEABLE PAGINATION BOX */}
+                {/* 🟢 📱 DESKTOP PREV/NEXT ARROWS + MOBILE SWIPEABLE PAGINATION BOX */}
                 {totalPages > 1 && (
                   <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
-                    <div 
-                      className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
-                      style={{ 
-                        maxWidth: '100%', 
-                        overflowX: 'auto', 
-                        whiteSpace: 'nowrap',
-                        WebkitOverflowScrolling: 'touch',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none'
-                      }}
-                    >
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                        const isActive = currentPage === pageNum;
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            className={`btn fw-bold rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm ${
-                              isActive 
-                                ? 'btn-warning text-dark border-warning' 
-                                : darkMode ? 'btn-outline-secondary text-white' : 'btn-light border text-dark'
-                            }`}
-                            style={{ 
-                              minWidth: '42px', 
-                              height: '40px', 
-                              fontSize: '14px',
-                              flexShrink: 0 
-                            }}
-                            onClick={() => handlePageChange(pageNum)}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
+                    <div className="d-flex align-items-center gap-2">
+                      
+                      {/* DESKTOP PREV BUTTON */}
+                      <button
+                        type="button"
+                        className={`btn btn-sm fw-bold rounded-3 border d-none d-md-inline-flex align-items-center justify-content-center shadow-sm ${
+                          currentPage === 1 ? 'btn-outline-secondary disabled' : darkMode ? 'btn-outline-light text-white' : 'btn-light text-dark'
+                        }`}
+                        style={{ height: '40px', padding: '0 14px' }}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        &larr; Prev
+                      </button>
+
+                      {/* PAGINATION NUMBERS BAR */}
+                      <div 
+                        className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
+                        style={{ 
+                          maxWidth: '100%', 
+                          overflowX: 'auto', 
+                          whiteSpace: 'nowrap',
+                          WebkitOverflowScrolling: 'touch',
+                          scrollbarWidth: 'none',
+                          msOverflowStyle: 'none'
+                        }}
+                      >
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                          const isActive = currentPage === pageNum;
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              className={`btn fw-bold rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm ${
+                                isActive 
+                                  ? 'btn-warning text-dark border-warning' 
+                                  : darkMode ? 'btn-outline-secondary text-white' : 'btn-light border text-dark'
+                              }`}
+                              style={{ 
+                                minWidth: '42px', 
+                                height: '40px', 
+                                fontSize: '14px',
+                                flexShrink: 0 
+                              }}
+                              onClick={() => handlePageChange(pageNum)}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* DESKTOP NEXT BUTTON */}
+                      <button
+                        type="button"
+                        className={`btn btn-sm fw-bold rounded-3 border d-none d-md-inline-flex align-items-center justify-content-center shadow-sm ${
+                          currentPage === totalPages ? 'btn-outline-secondary disabled' : darkMode ? 'btn-outline-light text-white' : 'btn-light text-dark'
+                        }`}
+                        style={{ height: '40px', padding: '0 14px' }}
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next &rarr;
+                      </button>
+
                     </div>
                     
                     <small className={`mt-2 fw-bold small ${subTextClass}`}>
-                      Swipe ↔ Page <b>{currentPage}</b> of <b>{totalPages}</b>
+                      Page <b>{currentPage}</b> of <b>{totalPages}</b> {isMobileDevice() ? '(Swipe ↔)' : ''}
                     </small>
                   </div>
                 )}
