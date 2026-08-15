@@ -1367,6 +1367,24 @@ function App() {
     }
   };
 
+  // 🟢 HELPER: OPEN CHATBOT AND CLOSE ALL OTHER OPEN MODALS / DRAWERS
+  const handleOpenChatbot = () => {
+    setShowProfileDrawer(false);
+    setShowEditProfileModal(false);
+    setShowAccountSettingsModal(false);
+    setShowPrivacyPolicyModal(false);
+    setShowCategoryMenu(false);
+    setShowSignupModal(false);
+    setShowLoginModal(false);
+    setShowReviewModal(false);
+    setShowReviewModalReturn(false);
+    setShowCartModal(false);
+    setShowCheckoutModal(false);
+    setShowOrderTracking(false);
+    setShowAppDownloadModal(false);
+    setShowChatbot(true);
+  };
+
   // 🌓 DYNAMIC THEME CLASS HELPERS
   const bgMainClass = darkMode ? 'bg-dark text-white' : 'bg-light text-dark';
   const cardBgClass = darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : 'bg-white text-dark';
@@ -2563,7 +2581,7 @@ function App() {
           <button 
             className="btn btn-primary rounded-circle shadow-lg fw-bold d-flex align-items-center justify-content-center" 
             style={{ width: '52px', height: '52px', fontSize: '13px' }}
-            onClick={() => setShowChatbot(true)}
+            onClick={handleOpenChatbot}
             title="AI Assistant"
           >
             💬 AI
