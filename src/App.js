@@ -843,11 +843,28 @@ function App() {
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
-  // 🟢 🎯 STRICT AVAILABLE-ONLY ATTRIBUTE VALUE FINDER
-  const getAvailableValuesForAttribute = (attrName, attrIndex) => {
-    if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return [];
+  // 🟢 🎯 ORDER ATTRIBUTES: Color / Model FIRST, Size / Others SECOND
+  const getOrderedAttributeNames = () => {
+    if (!selectedProductDetail?.dynamicAttributeNames) return [];
+    const list = [...selectedProductDetail.dynamicAttributeNames];
     
-    // For primary attribute (index 0), show distinct values present across all variants
+    // Sort so 'Color' or 'Colour' or 'Model' is evaluated and displayed first
+    list.sort((a, b) => {
+      const isAColor = a.toLowerCase().includes('color') || a.toLowerCase().includes('model');
+      const isBColor = b.toLowerCase().includes('color') || b.toLowerCase().includes('model');
+      if (isAColor && !isBColor) return -1;
+      if (!isAColor && isBColor) return 1;
+      return 0;
+    });
+
+    return list;
+  };
+
+  // 🟢 🎯 STRICT AVAILABLE-ONLY ATTRIBUTE VALUES FINDER
+  const getAvailableValuesForAttribute = (attrName, attrIndex, orderedAttrList) => {
+    if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return [];
+
+    // 1. Primary attribute (e.g. Color): Show all distinct values across all variants
     if (attrIndex === 0) {
       const set = new Set();
       selectedProductDetail.variants.forEach(v => {
@@ -857,8 +874,8 @@ function App() {
       return Array.from(set);
     }
 
-    // For secondary attributes, show ONLY options that exist for currently selected primary attributes
-    const primaryAttrName = selectedProductDetail.dynamicAttributeNames[0];
+    // 2. Secondary attribute (e.g. Size): Show ONLY values that match the currently selected primary attribute!
+    const primaryAttrName = orderedAttrList[0];
     const primarySelectedVal = selectedAttributes[primaryAttrName];
 
     const validSubValues = new Set();
@@ -869,13 +886,22 @@ function App() {
       }
     });
 
+    // Fallback: If no match, return all valid values for this attribute
+    if (validSubValues.size === 0) {
+      selectedProductDetail.variants.forEach(v => {
+        const attrs = getVariantAttributes(v);
+        if (attrs[attrName]) validSubValues.add(attrs[attrName]);
+      });
+    }
+
     return Array.from(validSubValues);
   };
 
-  // 🟢 🎯 SMART STRICT SELECTOR
+  // 🟢 🎯 SMART STRICT SELECTOR (AUTO-SWITCHES SIZES & VARIANT IMAGES WHEN COLOR CHANGES)
   const handleSelectAttributeValue = (attrName, value) => {
     if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return;
 
+    // 1. Try exact combination match
     const potentialAttrs = { ...selectedAttributes, [attrName]: value };
 
     let matchingVariant = selectedProductDetail.variants.find(v => {
@@ -883,6 +909,8 @@ function App() {
       return Object.entries(potentialAttrs).every(([k, expectedVal]) => attrs[k] === expectedVal);
     });
 
+    // 2. If changing Color and the previous Size doesn't exist for this Color:
+    // Auto-pick the first available Size for this Color!
     if (!matchingVariant) {
       matchingVariant = selectedProductDetail.variants.find(v => {
         const attrs = getVariantAttributes(v);
@@ -1730,7 +1758,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (WITH STRICT AVAILABLE-ONLY DYNAMIC ATTRIBUTES) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (COLOR-FIRST DYNAMIC ATTRIBUTES & LIVE IMAGES) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1843,11 +1871,11 @@ function App() {
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                {/* 🟢 🎯 STRICT AVAILABLE-ONLY DYNAMIC ATTRIBUTE SELECTORS */}
+                {/* 🟢 🎯 COLOR-FIRST ORDERED ATTRIBUTES SELECTOR */}
                 {selectedProductDetail.dynamicAttributeNames && selectedProductDetail.dynamicAttributeNames.length > 0 ? (
                   <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
-                    {selectedProductDetail.dynamicAttributeNames.map((attrName, aIdx) => {
-                      const availableOptions = getAvailableValuesForAttribute(attrName, aIdx);
+                    {getOrderedAttributeNames().map((attrName, aIdx, orderedList) => {
+                      const availableOptions = getAvailableValuesForAttribute(attrName, aIdx, orderedList);
                       if (availableOptions.length === 0) return null;
 
                       return (
