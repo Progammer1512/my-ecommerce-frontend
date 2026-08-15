@@ -34,6 +34,19 @@ const isValidImageUrl = (url) => {
   return true;
 };
 
+// Helper to extract clean attributes object from a variant
+const getVariantAttributes = (v) => {
+  if (!v) return {};
+  const attrs = {};
+  if (v.attributes) {
+    const rawMap = (v.attributes instanceof Map) ? Object.fromEntries(v.attributes) : v.attributes;
+    Object.assign(attrs, rawMap);
+  }
+  if (v.size) attrs['Size'] = v.size;
+  if (v.color) attrs['Color'] = v.color;
+  return attrs;
+};
+
 // HELPER: READS EXACT STOCK FROM MONGODB
 const getProductStock = (p, selectedVariant = null) => {
   if (selectedVariant && selectedVariant.stock !== undefined) {
@@ -231,20 +244,11 @@ function App() {
         // Initialize default selected dynamic attributes & variant
         if (prod?.variants && prod.variants.length > 0) {
           const firstVariant = prod.variants[0];
-          const initialAttrs = {};
-          if (firstVariant.attributes) {
-            const rawAttrs = (firstVariant.attributes instanceof Map) 
-              ? Object.fromEntries(firstVariant.attributes) 
-              : firstVariant.attributes;
-            Object.assign(initialAttrs, rawAttrs);
-          }
-          if (firstVariant.size) initialAttrs['Size'] = firstVariant.size;
-          if (firstVariant.color) initialAttrs['Color'] = firstVariant.color;
+          const initialAttrs = getVariantAttributes(firstVariant);
           
           setSelectedAttributes(initialAttrs);
           setMatchedVariant(firstVariant);
 
-          // 📸 Set active image to variant's image if available
           const firstVarImgs = Array.isArray(firstVariant.images) && firstVariant.images.length > 0
             ? firstVariant.images
             : (firstVariant.image ? [firstVariant.image] : []);
@@ -332,7 +336,6 @@ function App() {
     window.history.back();
   };
 
-  // 🟢 HORIZONTAL SWIPEABLE PAGE CHANGE
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
       navigateToView('HOME', { page: pageNumber });
@@ -340,7 +343,6 @@ function App() {
     }
   };
 
-  // 📲 UNIVERSAL POPSTATE LISTENER
   useEffect(() => {
     if (!window.history.state || !window.history.state.view) {
       window.history.replaceState({ view: 'HOME', page: 1, category: 'All', search: '' }, '', window.location.href);
@@ -364,7 +366,6 @@ function App() {
     navigateToView('HOME', { page: 1, category: 'All', search: '' });
   };
 
-  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
   useEffect(() => {
     if (isRunningStandalone() || !isMobileDevice()) {
       setShowAppDownloadModal(false);
@@ -383,7 +384,6 @@ function App() {
     }
   }, []);
 
-  // 📲 NATIVE APP INSTALL EVENT LISTENER
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
@@ -843,50 +843,64 @@ function App() {
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 
-  // 🟢 DYNAMIC ATTRIBUTE SELECTOR HELPER (Extract distinct options per attribute name)
-  const getDistinctValuesForAttribute = (attrName) => {
-    if (!selectedProductDetail?.variants) return [];
-    const valuesSet = new Set();
+  // 🟢 🎯 STRICT AVAILABLE-ONLY ATTRIBUTE VALUE FINDER
+  const getAvailableValuesForAttribute = (attrName, attrIndex) => {
+    if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return [];
+    
+    // For primary attribute (index 0), show distinct values present across all variants
+    if (attrIndex === 0) {
+      const set = new Set();
+      selectedProductDetail.variants.forEach(v => {
+        const attrs = getVariantAttributes(v);
+        if (attrs[attrName]) set.add(attrs[attrName]);
+      });
+      return Array.from(set);
+    }
 
+    // For secondary attributes, show ONLY options that exist for currently selected primary attributes
+    const primaryAttrName = selectedProductDetail.dynamicAttributeNames[0];
+    const primarySelectedVal = selectedAttributes[primaryAttrName];
+
+    const validSubValues = new Set();
     selectedProductDetail.variants.forEach(v => {
-      if (v.attributes) {
-        const rawMap = (v.attributes instanceof Map) ? Object.fromEntries(v.attributes) : v.attributes;
-        if (rawMap[attrName]) valuesSet.add(rawMap[attrName]);
+      const attrs = getVariantAttributes(v);
+      if (attrs[primaryAttrName] === primarySelectedVal && attrs[attrName]) {
+        validSubValues.add(attrs[attrName]);
       }
-      if (attrName.toLowerCase() === 'size' && v.size) valuesSet.add(v.size);
-      if (attrName.toLowerCase() === 'color' && v.color) valuesSet.add(v.color);
     });
 
-    return Array.from(valuesSet);
+    return Array.from(validSubValues);
   };
 
-  // 🟢 UPDATE SELECTED DYNAMIC ATTRIBUTE & RE-MATCH VARIANT (WITH LIVE GALLERY SWITCH)
+  // 🟢 🎯 SMART STRICT SELECTOR
   const handleSelectAttributeValue = (attrName, value) => {
-    const updatedAttrs = { ...selectedAttributes, [attrName]: value };
-    setSelectedAttributes(updatedAttrs);
+    if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return;
 
-    if (selectedProductDetail?.variants) {
-      const found = selectedProductDetail.variants.find(v => {
-        const rawMap = (v.attributes instanceof Map) ? Object.fromEntries(v.attributes) : (v.attributes || {});
-        
-        return Object.entries(updatedAttrs).every(([k, expectedVal]) => {
-          if (rawMap[k] && rawMap[k] === expectedVal) return true;
-          if (k.toLowerCase() === 'size' && v.size === expectedVal) return true;
-          if (k.toLowerCase() === 'color' && v.color === expectedVal) return true;
-          return false;
-        });
+    const potentialAttrs = { ...selectedAttributes, [attrName]: value };
+
+    let matchingVariant = selectedProductDetail.variants.find(v => {
+      const attrs = getVariantAttributes(v);
+      return Object.entries(potentialAttrs).every(([k, expectedVal]) => attrs[k] === expectedVal);
+    });
+
+    if (!matchingVariant) {
+      matchingVariant = selectedProductDetail.variants.find(v => {
+        const attrs = getVariantAttributes(v);
+        return attrs[attrName] === value;
       });
+    }
 
-      if (found) {
-        setMatchedVariant(found);
-        // 📸 Instantly switch display image to the matched variant's dedicated cover photo
-        const varImgs = Array.isArray(found.images) && found.images.length > 0
-          ? found.images
-          : (found.image ? [found.image] : []);
+    if (matchingVariant) {
+      const newAttrs = getVariantAttributes(matchingVariant);
+      setSelectedAttributes(newAttrs);
+      setMatchedVariant(matchingVariant);
 
-        if (varImgs.length > 0) {
-          setActiveGalleryImage(varImgs[0]);
-        }
+      const varImgs = Array.isArray(matchingVariant.images) && matchingVariant.images.length > 0
+        ? matchingVariant.images
+        : (matchingVariant.image ? [matchingVariant.image] : []);
+
+      if (varImgs.length > 0) {
+        setActiveGalleryImage(varImgs[0]);
       }
     }
   };
@@ -1212,7 +1226,7 @@ function App() {
 
   const currentBanner = heroBanners[currentSlide] || null;
 
-  // 📸 DYNAMIC GALLERY IMAGES: Show currently matched variant's dedicated gallery if present, else product gallery
+  // 📸 DYNAMIC GALLERY IMAGES
   const detailGalleryImages = (() => {
     if (matchedVariant) {
       const varImgs = Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0
@@ -1716,7 +1730,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (WITH INTERACTIVE GALLERY & LIVE VARIANT MULTI-IMAGE SWITCHING) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (WITH STRICT AVAILABLE-ONLY DYNAMIC ATTRIBUTES) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1766,7 +1780,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* 📸 Multi-angle Clickable Thumbnail Strip (Switches smoothly with Variant) */}
+                {/* 📸 Multi-angle Clickable Thumbnail Strip */}
                 {detailGalleryImages.length > 1 && (
                   <div className="d-flex align-items-center justify-content-center gap-2 overflow-auto py-1" style={{ scrollbarWidth: 'none' }}>
                     {detailGalleryImages.map((imgUrl, idx) => {
@@ -1829,12 +1843,12 @@ function App() {
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                {/* 🟢 100% DYNAMIC ATTRIBUTE SELECTORS (Capacity, Speed, Model, Size etc.) */}
+                {/* 🟢 🎯 STRICT AVAILABLE-ONLY DYNAMIC ATTRIBUTE SELECTORS */}
                 {selectedProductDetail.dynamicAttributeNames && selectedProductDetail.dynamicAttributeNames.length > 0 ? (
                   <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                     {selectedProductDetail.dynamicAttributeNames.map((attrName, aIdx) => {
-                      const distinctOptions = getDistinctValuesForAttribute(attrName);
-                      if (distinctOptions.length === 0) return null;
+                      const availableOptions = getAvailableValuesForAttribute(attrName, aIdx);
+                      if (availableOptions.length === 0) return null;
 
                       return (
                         <div key={aIdx} className="mb-3">
@@ -1842,8 +1856,9 @@ function App() {
                             <i className="bi bi-sliders me-1"></i>Select {attrName}:
                           </label>
                           <div className="d-flex flex-wrap gap-2">
-                            {distinctOptions.map((optVal, oIdx) => {
+                            {availableOptions.map((optVal, oIdx) => {
                               const isSelected = selectedAttributes[attrName] === optVal;
+
                               return (
                                 <button
                                   key={oIdx}
@@ -1855,7 +1870,7 @@ function App() {
                                   }`}
                                   onClick={() => handleSelectAttributeValue(attrName, optVal)}
                                 >
-                                  {optVal}
+                                  <span>{optVal}</span>
                                 </button>
                               );
                             })}
@@ -2031,7 +2046,7 @@ function App() {
                           className="shadow-sm" 
                           alt={p.name} 
                           onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                         />
                       </div>
                     </div>
