@@ -101,7 +101,7 @@ function App() {
 
   // 🤖 AI CHATBOT STATES
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'ai', text: '👋 Hello! Welcome to TechStore. Ask me about products, stock, variants, or tracking your orders!' }
+    { sender: 'ai', text: '👋 Hello! Welcome to TechStore. How can I help you find products or track your order today?' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -239,7 +239,11 @@ function App() {
       setSearchTerm(state.search);
     }
 
+    // 🟢 Reset AI chat to default welcome message when returning to HOME
     if (!state || !state.view || state.view === 'HOME') {
+      setChatMessages([
+        { sender: 'ai', text: '👋 Hello! Welcome to TechStore. How can I help you find products or track your order today?' }
+      ]);
       return;
     }
 
@@ -248,9 +252,9 @@ function App() {
         const prod = state.product;
         setSelectedProductDetail(prod);
 
-        // Auto-refresh AI chat context on product switch
+        // Auto-set AI chat message specifically for this product
         setChatMessages([
-          { sender: 'ai', text: `🤖 You are currently viewing **${prod.name}**. Ask me about price, stock, variants, or orders!` }
+          { sender: 'ai', text: `🤖 You are currently viewing **${prod.name}**. Feel free to ask me about its price, stock, variants, or shipping!` }
         ]);
 
         // Initialize default selected dynamic attributes & variant
@@ -866,7 +870,6 @@ function App() {
     if (!selectedProductDetail?.dynamicAttributeNames) return [];
     const list = [...selectedProductDetail.dynamicAttributeNames];
     
-    // Sort so 'Color' or 'Colour' or 'Model' is evaluated and displayed first
     list.sort((a, b) => {
       const isAColor = a.toLowerCase().includes('color') || a.toLowerCase().includes('model');
       const isBColor = b.toLowerCase().includes('color') || b.toLowerCase().includes('model');
@@ -882,7 +885,6 @@ function App() {
   const getAvailableValuesForAttribute = (attrName, attrIndex, orderedAttrList) => {
     if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return [];
 
-    // 1. Primary attribute (e.g. Color): Show all distinct values across all variants
     if (attrIndex === 0) {
       const set = new Set();
       selectedProductDetail.variants.forEach(v => {
@@ -892,7 +894,6 @@ function App() {
       return Array.from(set);
     }
 
-    // 2. Secondary attribute (e.g. Size): Show ONLY values that match the currently selected primary attribute!
     const primaryAttrName = orderedAttrList[0];
     const primarySelectedVal = selectedAttributes[primaryAttrName];
 
@@ -904,7 +905,6 @@ function App() {
       }
     });
 
-    // Fallback: If no match, return all valid values for this attribute
     if (validSubValues.size === 0) {
       selectedProductDetail.variants.forEach(v => {
         const attrs = getVariantAttributes(v);
@@ -915,11 +915,10 @@ function App() {
     return Array.from(validSubValues);
   };
 
-  // 🟢 🎯 SMART STRICT SELECTOR (AUTO-SWITCHES SIZES & VARIANT IMAGES WHEN COLOR CHANGES)
+  // 🟢 🎯 SMART STRICT SELECTOR
   const handleSelectAttributeValue = (attrName, value) => {
     if (!selectedProductDetail?.variants || selectedProductDetail.variants.length === 0) return;
 
-    // 1. Try exact combination match
     const potentialAttrs = { ...selectedAttributes, [attrName]: value };
 
     let matchingVariant = selectedProductDetail.variants.find(v => {
@@ -927,8 +926,6 @@ function App() {
       return Object.entries(potentialAttrs).every(([k, expectedVal]) => attrs[k] === expectedVal);
     });
 
-    // 2. If changing Color and the previous Size doesn't exist for this Color:
-    // Auto-pick the first available Size for this Color!
     if (!matchingVariant) {
       matchingVariant = selectedProductDetail.variants.find(v => {
         const attrs = getVariantAttributes(v);
@@ -951,7 +948,7 @@ function App() {
     }
   };
 
-  // 🟢 ADD TO CART (DYNAMIC VARIANT & DEDICATED IMAGE SUPPORT)
+  // 🟢 ADD TO CART
   const addToCart = (product, specificVariant = null) => {
     const variantToUse = specificVariant || matchedVariant;
     const currentPrice = variantToUse ? Number(variantToUse.price) : Number(product.price);
@@ -1316,7 +1313,7 @@ function App() {
     });
   };
 
-  // 🤖 AI CHATBOT SUBMIT HANDLER (WITH USER EMAIL & CONTEXT REFRESH)
+  // 🤖 AI CHATBOT SUBMIT HANDLER (WITH USER EMAIL & CURRENT PRODUCT CONTEXT)
   const handleChatSubmit = async (e) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
@@ -1330,7 +1327,8 @@ function App() {
       const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
       const res = await axios.post(`${BASE_URL}/api/ai/chat`, { 
         message: userMsg,
-        userEmail: activeUser ? activeUser.email : null 
+        userEmail: activeUser ? activeUser.email : null,
+        currentProductName: selectedProductDetail ? selectedProductDetail.name : null
       });
       const aiReply = res.data?.reply || "I couldn't find information regarding that.";
       setChatMessages(prev => [...prev, { sender: 'ai', text: aiReply }]);
@@ -2108,7 +2106,7 @@ function App() {
                 <div key={p._id} className="col-6 col-md-6 col-lg-4 d-flex">
                   <div className={`card w-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column ${cardBgClass}`}>
                     <div 
-                      className={`text-center p-2 p-md-3 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`}
+                      className={`text-center p-2 p-md-3 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                       style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                       onClick={() => handleOpenProductDetail(p)}
                     >
@@ -2337,7 +2335,7 @@ function App() {
                   })}
                 </div>
 
-                {/* 🟢 📱 SMART RESPONSIVE PAGINATION (SWIPEABLE BOX FOR MOBILE, SLIDING WINDOW 1-5 FOR DESKTOP) */}
+                {/* 🟢 📱 SMART RESPONSIVE PAGINATION */}
                 {totalPages > 1 && (
                   <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
                     
@@ -2394,7 +2392,6 @@ function App() {
 
                       <div className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
                         {(() => {
-                          // Calculate sliding window of 5 pages for desktop
                           let startPage = Math.max(1, currentPage - 2);
                           let endPage = Math.min(totalPages, startPage + 4);
                           if (endPage - startPage < 4) {
