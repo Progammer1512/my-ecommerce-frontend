@@ -228,6 +228,7 @@ function App() {
     setSelectedProductDetail(null);
     setSelectedAttributes({});
     setMatchedVariant(null);
+    setShowChatbot(false); // 🟢 Auto-close chatbot on switching to any view/modal
 
     if (state && typeof state.page === 'number') {
       setCurrentPage(state.page);
