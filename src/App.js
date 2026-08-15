@@ -436,7 +436,7 @@ function App() {
 
   const fetchCategoriesTree = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/categories`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/api/categories`);
       if (res.data && res.data.tree) {
         setCategoryTree(res.data.tree);
         setAllCategoriesList(res.data.categories || []);
@@ -450,7 +450,7 @@ function App() {
     try {
       const activeUser = user || JSON.parse(localStorage.getItem('googleUser') || 'null');
       const emailQuery = activeUser && activeUser.email ? `?email=${encodeURIComponent(activeUser.email)}` : '';
-      const res = await axios.get(`${BASE_URL}/api/coupons${emailQuery}`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/api/coupons${emailQuery}`);
       if (Array.isArray(res.data) && res.data.length > 0) {
         setCoupons(res.data);
       }
@@ -462,7 +462,7 @@ function App() {
 
   const fetchReviews = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/reviews`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/api/reviews`);
       if (Array.isArray(res.data)) setAllReviews(res.data);
     } catch (err) {
       console.error('Error fetching reviews:', err);
@@ -471,7 +471,7 @@ function App() {
 
   const fetchLiveOrders = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/orders`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/api/orders`);
       if (Array.isArray(res.data)) setAllStoreOrders(res.data);
     } catch (err) {
       console.error('Error fetching live orders:', err);
@@ -483,7 +483,7 @@ function App() {
   const fetchBanners = async (isInitial = false) => {
     try {
       if (isInitial) setBannersLoading(true);
-      const res = await axios.get(`${BASE_URL}/api/banners`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/api/banners`);
       if (res.data && res.data.length > 0) {
         const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
         setHeroBanners(cleanBanners);
@@ -500,9 +500,11 @@ function App() {
   const fetchProducts = async (setInitial = false) => {
     try {
       if (setInitial) setLoading(true);
-      const res = await axios.get(`${BASE_URL}/api/products`, { timeout: 12000 });
+      const res = await axios.get(`${BASE_URL}/api/products`);
       const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
-      setProducts(productList);
+      if (productList.length > 0) {
+        setProducts(productList);
+      }
     } catch (err) {
       console.error('Error fetching products:', err);
     } finally {
