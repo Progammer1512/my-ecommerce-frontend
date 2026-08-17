@@ -34,6 +34,16 @@ const isValidImageUrl = (url) => {
   return true;
 };
 
+// 🎥 HELPER: DETECT & PARSE YOUTUBE EMBED URL
+const getEmbedUrl = (url) => {
+  if (!url) return '';
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11)
+    ? `https://www.youtube.com/embed/${match[2]}`
+    : url;
+};
+
 // Helper to extract clean attributes object from a variant
 const getVariantAttributes = (v) => {
   if (!v) return {};
@@ -177,9 +187,10 @@ function App() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // 🟢 FULL-PAGE PRODUCT DETAIL, GALLERY & DYNAMIC ATTRIBUTE SELECTOR STATE
+  // 🟢 FULL-PAGE PRODUCT DETAIL, GALLERY, VIDEO & DYNAMIC ATTRIBUTE SELECTOR STATE
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [activeGalleryImage, setActiveGalleryImage] = useState('');
+  const [activeMediaType, setActiveMediaType] = useState('image'); // 'image' | 'video'
   const [selectedAttributes, setSelectedAttributes] = useState({});
   const [matchedVariant, setMatchedVariant] = useState(null);
 
@@ -276,6 +287,7 @@ function App() {
     setSelectedProductDetail(null);
     setSelectedAttributes({});
     setMatchedVariant(null);
+    setActiveMediaType('image');
     setShowChatbot(false); // 🟢 Auto-close chatbot on opening any modal/page
 
     if (state && typeof state.page === 'number') {
@@ -300,6 +312,7 @@ function App() {
       case 'PRODUCT_DETAIL':
         const prod = state.product;
         setSelectedProductDetail(prod);
+        setActiveMediaType('image');
 
         // Auto-set AI chat message specifically for this product
         setChatMessages([
@@ -981,6 +994,7 @@ function App() {
       const newAttrs = getVariantAttributes(matchingVariant);
       setSelectedAttributes(newAttrs);
       setMatchedVariant(matchingVariant);
+      setActiveMediaType('image');
 
       const varImgs = Array.isArray(matchingVariant.images) && matchingVariant.images.length > 0
         ? matchingVariant.images
@@ -1027,10 +1041,10 @@ function App() {
       );
     } else {
       updatedCart = [...cart, { 
-        ...product,
+        ...product, 
         cartItemKey: variantKey,
         selectedOption: attrValuesLabel,
-        price: currentPrice,
+        price: currentPrice, 
         qty: 1, 
         image: variantItemImage
       }];
@@ -1071,6 +1085,7 @@ function App() {
         price: cartItem.price,
         image: cartItem.image || DEFAULT_FALLBACK_IMAGE,
         images: cartItem.images || [cartItem.image || DEFAULT_FALLBACK_IMAGE],
+        video: cartItem.video || null,
         description: 'Premium store product added to your shopping cart.',
         category: cartItem.category || 'Store Item',
         countInStock: cartItem.countInStock !== undefined ? cartItem.countInStock : (cartItem.stock || 10)
@@ -1272,6 +1287,7 @@ function App() {
         price: item.price,
         image: item.image || DEFAULT_FALLBACK_IMAGE,
         images: [item.image || DEFAULT_FALLBACK_IMAGE],
+        video: item.video || null,
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
         countInStock: item.countInStock !== undefined ? item.countInStock : (item.stock || 0)
@@ -1327,6 +1343,17 @@ function App() {
         : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE]);
     }
     return [DEFAULT_FALLBACK_IMAGE];
+  })();
+
+  // 🎥 GET ATTACHED VIDEO (MAIN PRODUCT OR MATCHED VARIANT)
+  const currentProductVideo = (() => {
+    if (matchedVariant && matchedVariant.video && matchedVariant.video.url) {
+      return matchedVariant.video;
+    }
+    if (selectedProductDetail && selectedProductDetail.video && selectedProductDetail.video.url) {
+      return selectedProductDetail.video;
+    }
+    return null;
   })();
 
   // Recursive Category Drawer Tree Renderer
@@ -1861,7 +1888,7 @@ function App() {
         </div>
       )}
 
-      {/* 🟢 PRODUCT DETAIL VIEW (COLOR-FIRST DYNAMIC ATTRIBUTES & SQUARE GALLERY) */}
+      {/* 🟢 PRODUCT DETAIL VIEW (COLOR-FIRST DYNAMIC ATTRIBUTES, SQUARE GALLERY & VIDEO PLAYER) */}
       {selectedProductDetail ? (
         <div className="container py-4">
           <button 
@@ -1874,7 +1901,7 @@ function App() {
           <div className={`card border-0 shadow-lg p-3 p-md-4 rounded-4 mb-5 ${cardBgClass}`}>
             <div className="row g-4 align-items-start">
               
-              {/* 📸 LEFT COLUMN: SQUARE DISPLAY IMAGE + THUMBNAILS */}
+              {/* 📸 LEFT COLUMN: SQUARE DISPLAY IMAGE / VIDEO PLAYER + THUMBNAILS */}
               <div className="col-lg-5 text-center">
                 <div 
                   className={`p-3 border rounded-4 shadow-sm position-relative d-flex align-items-center justify-content-center mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
@@ -1893,48 +1920,83 @@ function App() {
                     10% OFF
                   </span>
                   
-                  {/* Square Main Image Frame */}
+                  {/* Square Main Media Frame (Image or Video) */}
                   <div style={{ width: '100%', height: '100%', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img 
-                      src={activeGalleryImage || selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
-                      alt={selectedProductDetail.name} 
-                      className="shadow-sm" 
-                      onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                      style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'cover', 
-                        borderRadius: '18px',
-                        transition: '0.3s ease-in-out'
-                      }}
-                    />
+                    {activeMediaType === 'video' && currentProductVideo?.url ? (
+                      currentProductVideo.url.includes('youtu') ? (
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          src={getEmbedUrl(currentProductVideo.url)}
+                          title="Product Demo Video"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="rounded-4 shadow-sm"
+                          style={{ borderRadius: '18px', width: '100%', height: '100%', border: 0 }}
+                        />
+                      ) : (
+                        <video controls className="rounded-4 shadow-sm" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '18px' }}>
+                          <source src={currentProductVideo.url} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      )
+                    ) : (
+                      <img 
+                        src={activeGalleryImage || selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
+                        alt={selectedProductDetail.name} 
+                        className="shadow-sm" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover', 
+                          borderRadius: '18px',
+                          transition: '0.3s ease-in-out'
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* 📸 Multi-angle Clickable Thumbnail Strip */}
-                {detailGalleryImages.length > 1 && (
-                  <div className="d-flex align-items-center justify-content-center gap-2 overflow-auto py-1" style={{ scrollbarWidth: 'none' }}>
-                    {detailGalleryImages.map((imgUrl, idx) => {
-                      const isSelected = (activeGalleryImage === imgUrl) || (!activeGalleryImage && idx === 0);
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={() => setActiveGalleryImage(imgUrl)}
-                          className={`rounded-3 p-1 border shadow-sm ${isSelected ? 'border-warning border-3' : 'border-secondary opacity-75'}`}
-                          style={{ width: '60px', height: '60px', minWidth: '60px', minHeight: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
-                          title={`View Angle #${idx + 1}`}
-                        >
-                          <img 
-                            src={imgUrl || DEFAULT_FALLBACK_IMAGE} 
-                            alt={`Thumbnail ${idx + 1}`} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
-                            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* 📸 Multi-angle Clickable Thumbnail Strip + 🎥 Video Button */}
+                <div className="d-flex align-items-center justify-content-center gap-2 overflow-auto py-1" style={{ scrollbarWidth: 'none' }}>
+                  {detailGalleryImages.map((imgUrl, idx) => {
+                    const isSelected = activeMediaType === 'image' && ((activeGalleryImage === imgUrl) || (!activeGalleryImage && idx === 0));
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => {
+                          setActiveMediaType('image');
+                          setActiveGalleryImage(imgUrl);
+                        }}
+                        className={`rounded-3 p-1 border shadow-sm ${isSelected ? 'border-warning border-3' : 'border-secondary opacity-75'}`}
+                        style={{ width: '60px', height: '60px', minWidth: '60px', minHeight: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
+                        title={`View Angle #${idx + 1}`}
+                      >
+                        <img 
+                          src={imgUrl || DEFAULT_FALLBACK_IMAGE} 
+                          alt={`Thumbnail ${idx + 1}`} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                          onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* 🎥 Clickable Video Play Thumbnail Button */}
+                  {currentProductVideo?.url && (
+                    <div 
+                      onClick={() => setActiveMediaType('video')}
+                      className={`rounded-3 p-1 border shadow-sm d-flex flex-column align-items-center justify-content-center text-white bg-dark ${activeMediaType === 'video' ? 'border-danger border-3 shadow' : 'border-secondary opacity-75'}`}
+                      style={{ width: '60px', height: '60px', minWidth: '60px', minHeight: '60px', aspectRatio: '1 / 1', cursor: 'pointer', flexShrink: 0, transition: '0.2s' }}
+                      title="Watch Product Video Demo"
+                    >
+                      <i className="bi bi-play-circle-fill fs-4 text-danger mb-0"></i>
+                      <span style={{ fontSize: '9px', fontWeight: 'bold' }}>Video</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* RIGHT COLUMN: DYNAMIC ATTRIBUTES SELECTORS & PRICE SWITCH */}
@@ -1950,6 +2012,11 @@ function App() {
                       {sIdx > 0 ? `› ${catStep}` : catStep}
                     </span>
                   ))}
+                  {currentProductVideo?.url && (
+                    <span className="badge bg-danger text-uppercase px-2 py-1 fw-bold">
+                      🎥 Video Available
+                    </span>
+                  )}
                 </div>
                 
                 <h1 className="fw-bold mb-2 fs-3 fs-md-2">{selectedProductDetail.name}</h1>
@@ -2031,6 +2098,7 @@ function App() {
                               }`}
                               onClick={() => {
                                 setMatchedVariant(v);
+                                setActiveMediaType('image');
                                 const vImgs = Array.isArray(v.images) && v.images.length > 0
                                   ? v.images
                                   : (v.image ? [v.image] : []);
@@ -2185,7 +2253,7 @@ function App() {
                       <span className="badge bg-secondary mb-1 w-auto me-auto" style={{ fontSize: '10px' }}>{p.category || 'General'}</span>
                       <h6 
                         className="card-title fw-bold text-truncate small m-0 mb-1" 
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer' }} 
                         onClick={() => handleOpenProductDetail(p)}
                       >
                         {p.name}
@@ -2344,7 +2412,7 @@ function App() {
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'cover' 
-                              }}
+                              }} 
                             />
                           </div>
                           
@@ -2586,8 +2654,8 @@ function App() {
                 type="text" 
                 className={`form-control form-control-sm ${darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : ''}`} 
                 placeholder="Ask about orders, products, stock..." 
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
               />
               <button type="submit" className="btn btn-primary btn-sm fw-bold px-3">Send</button>
             </form>
