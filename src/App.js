@@ -27,21 +27,34 @@ const isMobileDevice = () => {
   );
 };
 
-// Helper to filter out corrupted local/broken image paths
+// Helper to filter out corrupted local/broken image paths and resolve backend /uploads
+const getCleanMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.includes('NOW_REPLACE_TEXT')) return '';
+  if (url.includes('localhost:5000')) {
+    return url.replace('http://localhost:5000', BASE_URL);
+  }
+  if (url.startsWith('/uploads')) {
+    return `${BASE_URL}${url}`;
+  }
+  return url;
+};
+
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
-  if (url.includes('NOW_REPLACE_TEXT') || url.includes('localhost:5000')) return false;
+  if (url.includes('NOW_REPLACE_TEXT')) return false;
   return true;
 };
 
-// 🎥 HELPER: DETECT & PARSE YOUTUBE EMBED URL
+// 🎥 HELPER: DETECT & PARSE YOUTUBE EMBED URL OR CLEAN VIDEO FILE
 const getEmbedUrl = (url) => {
   if (!url) return '';
+  const clean = getCleanMediaUrl(url);
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
+  const match = clean.match(regExp);
   return (match && match[2].length === 11)
     ? `https://www.youtube.com/embed/${match[2]}`
-    : url;
+    : clean;
 };
 
 // Helper to extract clean attributes object from a variant
@@ -288,7 +301,7 @@ function App() {
     setSelectedAttributes({});
     setMatchedVariant(null);
     setActiveMediaType('image');
-    setShowChatbot(false); // 🟢 Auto-close chatbot on opening any modal/page
+    setShowChatbot(false);
 
     if (state && typeof state.page === 'number') {
       setCurrentPage(state.page);
@@ -300,7 +313,6 @@ function App() {
       setSearchTerm(state.search);
     }
 
-    // 🟢 Reset AI chat to default welcome message when returning to HOME
     if (!state || !state.view || state.view === 'HOME') {
       setChatMessages([
         { sender: 'ai', text: '👋 Hello! Welcome to TechStore. How can I help you find products or track your order today?' }
@@ -314,12 +326,10 @@ function App() {
         setSelectedProductDetail(prod);
         setActiveMediaType('image');
 
-        // Auto-set AI chat message specifically for this product
         setChatMessages([
           { sender: 'ai', text: `🤖 You are currently viewing **${prod.name}**. Feel free to ask me about its price, stock, variants, or shipping!` }
         ]);
 
-        // Initialize default selected dynamic attributes & variant
         if (prod?.variants && prod.variants.length > 0) {
           const firstVariant = prod.variants[0];
           const initialAttrs = getVariantAttributes(firstVariant);
@@ -332,12 +342,12 @@ function App() {
             : (firstVariant.image ? [firstVariant.image] : []);
 
           if (firstVarImgs.length > 0) {
-            setActiveGalleryImage(firstVarImgs[0]);
+            setActiveGalleryImage(getCleanMediaUrl(firstVarImgs[0]));
           } else {
             setActiveGalleryImage(
               (prod?.images && prod.images.length > 0)
-                ? prod.images[0]
-                : (prod?.image || DEFAULT_FALLBACK_IMAGE)
+                ? getCleanMediaUrl(prod.images[0])
+                : getCleanMediaUrl(prod?.image || DEFAULT_FALLBACK_IMAGE)
             );
           }
         } else {
@@ -345,8 +355,8 @@ function App() {
           setMatchedVariant(null);
           setActiveGalleryImage(
             (prod?.images && prod.images.length > 0)
-              ? prod.images[0]
-              : (prod?.image || DEFAULT_FALLBACK_IMAGE)
+              ? getCleanMediaUrl(prod.images[0])
+              : getCleanMediaUrl(prod?.image || DEFAULT_FALLBACK_IMAGE)
           );
         }
 
@@ -421,7 +431,6 @@ function App() {
     }
   };
 
-  // 📲 UNIVERSAL POPSTATE LISTENER
   useEffect(() => {
     if (!window.history.state || !window.history.state.view) {
       window.history.replaceState({ view: 'HOME', page: 1, category: 'All', search: '' }, '', window.location.href);
@@ -445,7 +454,6 @@ function App() {
     navigateToView('HOME', { page: 1, category: 'All', search: '' });
   };
 
-  // 📲 SHOW APP DOWNLOAD POPUP ONLY ON UNINSTALLED MOBILE BROWSERS
   useEffect(() => {
     if (isRunningStandalone() || !isMobileDevice()) {
       setShowAppDownloadModal(false);
@@ -464,7 +472,6 @@ function App() {
     }
   }, []);
 
-  // 📲 NATIVE APP INSTALL EVENT LISTENER
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
@@ -550,7 +557,10 @@ function App() {
       if (isInitial && !localStorage.getItem('techstore_cached_banners')) setBannersLoading(true);
       const res = await axios.get(`${BASE_URL}/api/banners`);
       if (res.data && res.data.length > 0) {
-        const cleanBanners = res.data.filter(b => isValidImageUrl(b.img));
+        const cleanBanners = res.data.filter(b => isValidImageUrl(b.img)).map(b => ({
+          ...b,
+          img: getCleanMediaUrl(b.img)
+        }));
         setHeroBanners(cleanBanners);
         localStorage.setItem('techstore_cached_banners', JSON.stringify(cleanBanners));
       }
@@ -567,8 +577,14 @@ function App() {
       const res = await axios.get(`${BASE_URL}/api/products`);
       const productList = Array.isArray(res.data) ? res.data : (res.data.products || []);
       if (productList.length > 0) {
-        setProducts(productList);
-        localStorage.setItem('techstore_cached_products', JSON.stringify(productList));
+        const sanitized = productList.map(p => ({
+          ...p,
+          image: getCleanMediaUrl(p.image),
+          images: Array.isArray(p.images) ? p.images.map(getCleanMediaUrl) : [],
+          video: p.video ? { ...p.video, url: getCleanMediaUrl(p.video.url) } : null
+        }));
+        setProducts(sanitized);
+        localStorage.setItem('techstore_cached_products', JSON.stringify(sanitized));
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -1001,7 +1017,7 @@ function App() {
         : (matchingVariant.image ? [matchingVariant.image] : []);
 
       if (varImgs.length > 0) {
-        setActiveGalleryImage(varImgs[0]);
+        setActiveGalleryImage(getCleanMediaUrl(varImgs[0]));
       }
     }
   };
@@ -1029,8 +1045,8 @@ function App() {
       : `${product._id || product.id}_BASE`;
 
     const variantItemImage = (variantToUse && variantToUse.images && variantToUse.images.length > 0)
-      ? variantToUse.images[0]
-      : (variantToUse?.image || activeGalleryImage || product.image || DEFAULT_FALLBACK_IMAGE);
+      ? getCleanMediaUrl(variantToUse.images[0])
+      : getCleanMediaUrl(variantToUse?.image || activeGalleryImage || product.image || DEFAULT_FALLBACK_IMAGE);
 
     let updatedCart;
     const existing = cart.find(item => item.cartItemKey === variantKey);
@@ -1083,8 +1099,8 @@ function App() {
         _id: cartItem._id,
         name: cartItem.name,
         price: cartItem.price,
-        image: cartItem.image || DEFAULT_FALLBACK_IMAGE,
-        images: cartItem.images || [cartItem.image || DEFAULT_FALLBACK_IMAGE],
+        image: getCleanMediaUrl(cartItem.image) || DEFAULT_FALLBACK_IMAGE,
+        images: [getCleanMediaUrl(cartItem.image) || DEFAULT_FALLBACK_IMAGE],
         video: cartItem.video || null,
         description: 'Premium store product added to your shopping cart.',
         category: cartItem.category || 'Store Item',
@@ -1128,7 +1144,7 @@ function App() {
       if (usedCount >= maxUsage) {
         setAppliedCoupon(null);
         setCouponCode(cleanCode);
-        setCouponCodeMessage(`❌ Promo code '${cleanCode}' usage limit exhausted! (${usedCount}/${maxUsage} used)`);
+        setCouponCodeMessage(`❌ Promo code '${cleanCode}' usage limit exhausted!`);
         return;
       }
 
@@ -1177,7 +1193,7 @@ function App() {
         qty: Number(i.qty) || 1, 
         price: Number(i.price) || 0, 
         product: i._id || i.id,
-        image: i.image || DEFAULT_FALLBACK_IMAGE
+        image: getCleanMediaUrl(i.image) || DEFAULT_FALLBACK_IMAGE
       })),
       shippingAddress: { 
         name: shippingName || (user ? user.name : 'Verified Customer'), 
@@ -1285,8 +1301,8 @@ function App() {
         _id: item.product || item._id,
         name: item.name,
         price: item.price,
-        image: item.image || DEFAULT_FALLBACK_IMAGE,
-        images: [item.image || DEFAULT_FALLBACK_IMAGE],
+        image: getCleanMediaUrl(item.image) || DEFAULT_FALLBACK_IMAGE,
+        images: [getCleanMediaUrl(item.image) || DEFAULT_FALLBACK_IMAGE],
         video: item.video || null,
         description: 'Verified store product from customer order history.',
         category: 'Ordered Item',
@@ -1332,15 +1348,15 @@ function App() {
   const detailGalleryImages = (() => {
     if (matchedVariant) {
       const varImgs = Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0
-        ? matchedVariant.images
-        : (matchedVariant.image ? [matchedVariant.image] : []);
+        ? matchedVariant.images.map(getCleanMediaUrl)
+        : (matchedVariant.image ? [getCleanMediaUrl(matchedVariant.image)] : []);
       if (varImgs.length > 0) return varImgs;
     }
 
     if (selectedProductDetail) {
       return (Array.isArray(selectedProductDetail.images) && selectedProductDetail.images.length > 0)
-        ? selectedProductDetail.images
-        : (selectedProductDetail.image ? [selectedProductDetail.image] : [DEFAULT_FALLBACK_IMAGE]);
+        ? selectedProductDetail.images.map(getCleanMediaUrl)
+        : (selectedProductDetail.image ? [getCleanMediaUrl(selectedProductDetail.image)] : [DEFAULT_FALLBACK_IMAGE]);
     }
     return [DEFAULT_FALLBACK_IMAGE];
   })();
@@ -1348,10 +1364,16 @@ function App() {
   // 🎥 GET ATTACHED VIDEO (MAIN PRODUCT OR MATCHED VARIANT)
   const currentProductVideo = (() => {
     if (matchedVariant && matchedVariant.video && matchedVariant.video.url) {
-      return matchedVariant.video;
+      return {
+        ...matchedVariant.video,
+        url: getCleanMediaUrl(matchedVariant.video.url)
+      };
     }
     if (selectedProductDetail && selectedProductDetail.video && selectedProductDetail.video.url) {
-      return selectedProductDetail.video;
+      return {
+        ...selectedProductDetail.video,
+        url: getCleanMediaUrl(selectedProductDetail.video.url)
+      };
     }
     return null;
   })();
@@ -1431,6 +1453,18 @@ function App() {
   const bgMainClass = darkMode ? 'bg-dark text-white' : 'bg-light text-dark';
   const cardBgClass = darkMode ? 'bg-secondary bg-opacity-25 text-white border-secondary' : 'bg-white text-dark';
   const subTextClass = darkMode ? 'text-white-50' : 'text-muted';
+
+  // 🟢 CHECK IF PRODUCT ACTUALLY HAS VALID ATTRIBUTES OR VARIANTS TO PREVENT EMPTY CONTAINER BOX
+  const hasDynamicAttributes = selectedProductDetail && 
+    Array.isArray(selectedProductDetail.dynamicAttributeNames) && 
+    selectedProductDetail.dynamicAttributeNames.length > 0 &&
+    selectedProductDetail.variants && 
+    selectedProductDetail.variants.length > 0;
+
+  const hasSimpleVariants = selectedProductDetail && 
+    (!selectedProductDetail.dynamicAttributeNames || selectedProductDetail.dynamicAttributeNames.length === 0) &&
+    selectedProductDetail.variants && 
+    selectedProductDetail.variants.length > 0;
 
   return (
     <div className={`${bgMainClass} min-vh-100 position-relative`} style={{ overflowX: 'hidden', width: '100%', backgroundColor: darkMode ? '#121212' : '#f8f9fa' }}>
@@ -1792,7 +1826,7 @@ function App() {
                               title="Click to view details"
                             >
                               <img 
-                                src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                                src={getCleanMediaUrl(item.image) || (item.images && getCleanMediaUrl(item.images[0])) || DEFAULT_FALLBACK_IMAGE} 
                                 alt={item.name} 
                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
@@ -1921,7 +1955,7 @@ function App() {
                   </span>
                   
                   {/* Square Main Media Frame (Image or Video) */}
-                  <div style={{ width: '100%', height: '100%', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '100%', height: '100%', borderRadius: '18px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
                     {activeMediaType === 'video' && currentProductVideo?.url ? (
                       currentProductVideo.url.includes('youtu') ? (
                         <iframe
@@ -1936,14 +1970,14 @@ function App() {
                           style={{ borderRadius: '18px', width: '100%', height: '100%', border: 0 }}
                         />
                       ) : (
-                        <video controls className="rounded-4 shadow-sm" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '18px' }}>
-                          <source src={currentProductVideo.url} type="video/mp4" />
+                        <video controls autoPlay className="rounded-4 shadow-sm" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '18px' }}>
+                          <source src={getEmbedUrl(currentProductVideo.url)} type="video/mp4" />
                           Your browser does not support the video tag.
                         </video>
                       )
                     ) : (
                       <img 
-                        src={activeGalleryImage || selectedProductDetail.image || DEFAULT_FALLBACK_IMAGE} 
+                        src={activeGalleryImage || getCleanMediaUrl(selectedProductDetail.image) || DEFAULT_FALLBACK_IMAGE} 
                         alt={selectedProductDetail.name} 
                         className="shadow-sm" 
                         onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -2041,8 +2075,8 @@ function App() {
                   <span className="badge bg-success text-white fw-bold fs-6">Special Price</span>
                 </div>
 
-                {/* 🟢 🎯 COLOR-FIRST ORDERED ATTRIBUTES SELECTOR */}
-                {selectedProductDetail.dynamicAttributeNames && selectedProductDetail.dynamicAttributeNames.length > 0 ? (
+                {/* 🟢 🎯 ATTRIBUTES SELECTOR (ONLY SHOWN IF VARIANTS / ATTRIBUTES EXIST) */}
+                {hasDynamicAttributes && (
                   <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
                     {getOrderedAttributeNames().map((attrName, aIdx, orderedList) => {
                       const availableOptions = getAvailableValuesForAttribute(attrName, aIdx, orderedList);
@@ -2077,42 +2111,41 @@ function App() {
                       );
                     })}
                   </div>
-                ) : (
-                  // Fallback for simple variants
-                  selectedProductDetail.variants && selectedProductDetail.variants.length > 0 && (
-                    <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
-                      <label className="fw-bold small d-block mb-2 text-primary">
-                        <i className="bi bi-tag-fill me-1"></i>Select Option / Size:
-                      </label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {selectedProductDetail.variants.map((v, idx) => {
-                          const isSelected = matchedVariant === v;
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border ${
-                                isSelected 
-                                  ? 'btn-warning text-dark border-warning shadow-sm' 
-                                  : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
-                              }`}
-                              onClick={() => {
-                                setMatchedVariant(v);
-                                setActiveMediaType('image');
-                                const vImgs = Array.isArray(v.images) && v.images.length > 0
-                                  ? v.images
-                                  : (v.image ? [v.image] : []);
-                                if (vImgs.length > 0) setActiveGalleryImage(vImgs[0]);
-                              }}
-                            >
-                              <span>{v.size || v.color || `Option #${idx + 1}`}</span>
-                              <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                )}
+
+                {hasSimpleVariants && (
+                  <div className={`p-3 rounded-3 border mb-3 ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
+                    <label className="fw-bold small d-block mb-2 text-primary">
+                      <i className="bi bi-tag-fill me-1"></i>Select Option / Size:
+                    </label>
+                    <div className="d-flex flex-wrap gap-2">
+                      {selectedProductDetail.variants.map((v, idx) => {
+                        const isSelected = matchedVariant === v;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            className={`btn btn-sm fw-bold px-3 py-2 rounded-3 border ${
+                              isSelected 
+                                ? 'btn-warning text-dark border-warning shadow-sm' 
+                                : darkMode ? 'btn-outline-secondary text-white' : 'btn-white bg-white text-dark'
+                            }`}
+                            onClick={() => {
+                              setMatchedVariant(v);
+                              setActiveMediaType('image');
+                              const vImgs = Array.isArray(v.images) && v.images.length > 0
+                                ? v.images.map(getCleanMediaUrl)
+                                : (v.image ? [getCleanMediaUrl(v.image)] : []);
+                              if (vImgs.length > 0) setActiveGalleryImage(vImgs[0]);
+                            }}
+                          >
+                            <span>{v.size || v.color || `Option #${idx + 1}`}</span>
+                            <span className="badge bg-dark ms-2 text-warning">₹{v.price}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  )
+                  </div>
                 )}
 
                 <div className={`row g-2 mb-4 p-3 rounded-3 border ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`}>
@@ -2241,7 +2274,7 @@ function App() {
                     >
                       <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
                         <img 
-                          src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                          src={getCleanMediaUrl(p.image) || (p.images && getCleanMediaUrl(p.images[0])) || DEFAULT_FALLBACK_IMAGE} 
                           className="shadow-sm" 
                           alt={p.name} 
                           onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -2299,7 +2332,7 @@ function App() {
                   <div 
                     className="position-absolute top-0 start-0 w-100 h-100"
                     style={{
-                      backgroundImage: `url(${currentBanner.img})`,
+                      backgroundImage: `url(${getCleanMediaUrl(currentBanner.img)})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       filter: 'blur(20px) brightness(0.4)',
@@ -2327,7 +2360,7 @@ function App() {
                   {currentBanner.img && (
                     <div className="col-5 col-md-4 text-end align-self-center">
                       <img 
-                        src={currentBanner.img} 
+                        src={getCleanMediaUrl(currentBanner.img)} 
                         alt="Offer" 
                         className="img-fluid rounded-4 shadow-lg border border-white border-opacity-25" 
                         onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -2388,7 +2421,6 @@ function App() {
                       <div key={p._id} className="col-6 col-md-6 col-lg-4 d-flex">
                         <div className={`card w-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column position-relative ${cardBgClass}`}>
                           
-                          {/* WISHLIST BUTTON */}
                           <button 
                             className="position-absolute top-0 end-0 m-2 btn btn-light rounded-circle shadow-sm border p-1 d-flex align-items-center justify-content-center"
                             style={{ width: '32px', height: '32px', zIndex: 5 }}
@@ -2398,14 +2430,13 @@ function App() {
                             <i className={`bi ${isWishlisted ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'}`} style={{ fontSize: '14px' }}></i>
                           </button>
 
-                          {/* 🟢 1:1 PERFECT SQUARE FIXED IMAGE FRAME (FULL COVER & EDGE-TO-EDGE) */}
                           <div 
                             className={`text-center p-0 d-flex align-items-center justify-content-center ${darkMode ? 'bg-dark' : 'bg-white'}`} 
                             style={{ width: '100%', aspectRatio: '1 / 1', cursor: 'pointer', overflow: 'hidden' }}
                             onClick={() => handleOpenProductDetail(p)}
                           >
                             <img 
-                              src={p.image || (p.images && p.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                              src={getCleanMediaUrl(p.image) || (p.images && getCleanMediaUrl(p.images[0])) || DEFAULT_FALLBACK_IMAGE} 
                               alt={p.name} 
                               onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
                               style={{ 
@@ -2468,7 +2499,6 @@ function App() {
                 {totalPages > 1 && (
                   <div className="d-flex flex-column align-items-center justify-content-center mt-4 mb-4">
                     
-                    {/* 1. MOBILE VIEW: Full Swipeable Box */}
                     <div className="d-block d-md-none w-100 text-center">
                       <div 
                         className={`p-2 rounded-4 shadow-sm border d-flex align-items-center gap-2 mx-auto ${darkMode ? 'bg-dark border-secondary' : 'bg-white'}`}
@@ -2505,7 +2535,6 @@ function App() {
                       </small>
                     </div>
 
-                    {/* 2. DESKTOP VIEW: Sliding Window 1-5 with Prev / Next Buttons */}
                     <div className="d-none d-md-flex align-items-center gap-2">
                       <button
                         type="button"
@@ -2712,7 +2741,7 @@ function App() {
                                   {/* 🟢 1:1 SQUARE THUMBNAIL */}
                                   <div style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', aspectRatio: '1 / 1', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)', padding: '2px' }}>
                                     <img 
-                                      src={item.image || (item.images && item.images[0]) || DEFAULT_FALLBACK_IMAGE} 
+                                      src={getCleanMediaUrl(item.image) || (item.images && getCleanMediaUrl(item.images[0])) || DEFAULT_FALLBACK_IMAGE} 
                                       alt={item.name} 
                                       className="shadow-sm" 
                                       onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_IMAGE; }}
@@ -2983,7 +3012,7 @@ function App() {
                               {ord.orderItems && ord.orderItems.map((item, idx) => (
                                 <div key={idx} className={`d-flex align-items-center gap-2 p-2 rounded-3 border shadow-sm ${darkMode ? 'bg-dark border-secondary' : 'bg-light'}`} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToProduct(item)}>
                                   <img 
-                                    src={item.image || DEFAULT_FALLBACK_IMAGE} 
+                                    src={getCleanMediaUrl(item.image) || DEFAULT_FALLBACK_IMAGE} 
                                     alt={item.name} 
                                     className="border bg-white" 
                                     width="40" 
